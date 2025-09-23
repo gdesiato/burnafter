@@ -1,4 +1,3 @@
 package com.burnafter.burnafter.dtos;
 
-public class OpenResponse {
-}
+public record OpenResponse(String kind, String content, int remaining) {}

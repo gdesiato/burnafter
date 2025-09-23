@@ -1,4 +1,3 @@
 package com.burnafter.burnafter.dtos;
 
-public class OpenRequest {
-}
+public record OpenRequest(String password) {}

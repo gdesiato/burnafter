@@ -1,4 +1,5 @@
 package com.burnafter.burnafter.dtos;
 
-public class MetaResponse {
-}
+import java.time.Instant;
+
+public record MetaResponse(String kind, Instant expiresAt, int remaining, boolean protectedByPassword) {}
