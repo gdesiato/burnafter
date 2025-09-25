@@ -1,0 +1,102 @@
+/* Optional globals; even if these are missing, fallbacks below keep borders visible */
+:root {
+    --line: #000;   /* solid black lines for the 90s vibe */
+    --fg: #000;
+    --muted: #666;
+  }
+  
+  .page {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #fff;
+    color: var(--fg, #000);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 14px;
+  }
+  
+  .container {
+    max-width: 700px;
+    width: 100%;
+    padding: 20px;
+  }
+  
+  h1 {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+  
+  /* --- CRITICAL FIX: harden inputs against resets/undefined vars --- */
+  textarea, input, select, button {
+    font-family: inherit;
+    font-size: inherit;
+    /* use var() with fallbacks so borders never disappear */
+    border: 1px solid var(--line, #000);
+    background: #fff;
+    color: var(--fg, #000);
+    padding: 4px 6px;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  
+  /* full width for text-ish controls */
+  textarea,
+  input[type="text"],
+  input[type="password"],
+  input[readonly] {
+    width: 100%;
+  }
+  
+  textarea {
+    resize: vertical;
+    min-height: 120px;
+  }
+  
+  input[type="number"] {
+    width: 80px;
+  }
+  
+  button {
+    cursor: pointer;
+    background: #eee;
+  }
+  
+  button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  label {
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+  
+  p {
+    margin: 10px 0;
+  }
+  
+  .hint {
+    color: var(--muted, #666);
+    font-size: 12px;
+    margin-top: -6px;
+  }
+  
+  .error {
+    color: #b00020;
+  }
+  
+  input[readonly] {
+    background: #f9f9f9;
+  }
+
+  .note {
+    white-space: pre-wrap;
+    border: 1px dashed var(--line);
+    background: #f5f5f5; /* light grey background */
+    padding: 10px;
+    min-height: 120px;
+    margin-top: 10px;
+    font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace;
+  }
+  
