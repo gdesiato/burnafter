@@ -1,1 +1,36 @@
-<p>create works!</p>
+<h2>Create a temporary note</h2>
+
+<form (ngSubmit)="submit()">
+  <textarea [(ngModel)]="text" name="text" rows="8" placeholder="Paste your note..." required></textarea>
+
+  <div style="margin:.5rem 0;">
+    <label>Expires in</label>
+    <select [(ngModel)]="expiresIn" name="expiresIn">
+      <option value="1h">1 hour</option>
+      <option value="24h">24 hours</option>
+      <option value="7d">7 days</option>
+    </select>
+
+    <label style="margin-left:1rem;">Views</label>
+    <select [(ngModel)]="views" name="views">
+      <option [value]="1">1</option>
+      <option [value]="5">5</option>
+      <option [value]="10">10</option>
+    </select>
+  </div>
+
+  <label><input type="checkbox" [(ngModel)]="burnAfterRead" name="burnAfterRead"> Burn after read</label>
+  <input type="password" [(ngModel)]="password" name="password" placeholder="Password (optional)">
+
+  <div style="margin-top:.5rem;">
+    <button type="submit" [disabled]="loading">Create Link</button>
+  </div>
+</form>
+
+<div *ngIf="error" style="color:red; margin-top:.5rem;">{{ error }}</div>
+
+<div *ngIf="resultUrl" style="margin-top:1rem;">
+  <p>Share this link:</p>
+  <input [value]="resultUrl" readonly style="width:100%">
+  <button (click)="copy()">Copy</button>
+</div>

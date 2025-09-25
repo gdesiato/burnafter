@@ -18,6 +18,7 @@ public class PasteService {
     @Value("${app.maxTextBytes:20000}")     int maxTextBytes;
     @Value("${app.defaultTtlMinutes:1440}") int defaultTtlMinutes;
     @Value("${app.maxTtlMinutes:10080}")    int maxTtlMinutes;
+    @Value("${app.publicBaseUrl:}")         private String publicBaseUrl;
 
     public CreatePasteResponse create(CreatePasteRequest req, String baseUrl) {
         if (!"TEXT".equalsIgnoreCase(req.kind)) throw new IllegalArgumentException("Only TEXT supported");
@@ -50,7 +51,16 @@ public class PasteService {
         );
 
         store.put(id, p);
-        return new CreatePasteResponse(id.toString(), baseUrl + "/p/" + id, p.getExpireAt(), p.getViewsLeft());
+        String readBase = (publicBaseUrl != null && !publicBaseUrl.isBlank())
+                ? publicBaseUrl
+                : baseUrl;
+
+        return new CreatePasteResponse(
+                id.toString(),
+                readBase + "/p/" + id,
+                p.getExpireAt(),
+                p.getViewsLeft()
+        );
     }
 
     public MetaResponse meta(UUID id) {

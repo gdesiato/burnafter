@@ -16,7 +16,8 @@ public class Paste {
     private boolean hasPassword;
     private String passwordHash;    // simple SHA-256 base64 for MVP
 
-    public Paste(UUID id, Kind kind, String contentText, Instant createdAt, Instant expireAt, int viewsLeft, boolean burnAfterRead, boolean hasPassword, String passwordHash) {
+    public Paste(UUID id, Kind kind, String contentText, Instant createdAt, Instant expireAt,
+                 int viewsLeft, boolean burnAfterRead, boolean hasPassword, String passwordHash) {
         this.id = id;
         this.kind = kind;
         this.contentText = contentText;

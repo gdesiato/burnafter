@@ -1,0 +1,20 @@
+<h2>View note</h2>
+
+<div *ngIf="error" style="color:red">{{ error }}</div>
+
+<div *ngIf="meta && !opened">
+  <p>
+    Expires: {{ meta.expiresAt | date:'medium' }}
+    · Remaining views: {{ meta.remaining }}
+  </p>
+
+  <div *ngIf="meta.protectedByPassword">
+    <input [(ngModel)]="password" type="password" placeholder="Password">
+  </div>
+
+  <button (click)="open()">Open</button>
+</div>
+
+<pre *ngIf="opened" style="white-space: pre-wrap; background:#f6f8fa; padding:1rem;">
+{{ content }}
+</pre>
