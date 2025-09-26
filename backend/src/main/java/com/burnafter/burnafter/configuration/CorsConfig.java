@@ -11,11 +11,13 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**")
-                        .allowedOrigins(
-                                "https://burnafter.pages.dev",
-                                "https://burnafter.io"
+                        .allowedOriginPatterns(
+                                "https://*.pages.dev",          // all Cloudflare Pages preview + default domains
+                                "https://burnafter.pages.dev",  // (optional explicit)
+                                "https://burnafter.io",         // your custom domain
+                                "https://*.burnafter.io"        // subdomains if any
                         )
-                        .allowedMethods("GET", "POST", "OPTIONS")
+                        .allowedMethods("GET","POST","PUT","DELETE","OPTIONS")
                         .allowedHeaders("*")
                         .allowCredentials(false);
             }

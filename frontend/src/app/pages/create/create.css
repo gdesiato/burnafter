@@ -65,8 +65,9 @@
   }
   
   textarea {
-    resize: vertical;
-    min-height: 120px;
+    resize: both;             
+    min-height: 120px;        
+    min-width: 500px;          
   }
   
   input[type="number"] {
