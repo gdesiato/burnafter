@@ -23,9 +23,9 @@
           <input type="number" min="1" max="10" [(ngModel)]="views" name="views">
         </label>
         &nbsp;&nbsp;
-        <label>
+        <label style="cursor:pointer; display:inline-flex; align-items:center;">
           <input type="checkbox" [(ngModel)]="burnAfterRead" name="burnAfterRead">
-          burn-after-read
+          <span style="margin-left:4px;">burn-after-read</span>
         </label>
       </p>
 
@@ -40,7 +40,7 @@
       </p>
 
       <p>
-        <button type="submit" [disabled]="loading || !text?.trim()">create</button>
+        <button type="submit" [disabled]="loading || !text.trim()">create</button>
       </p>
 
       @if (error) {

@@ -33,6 +33,12 @@ public class PasteController {
         return meta == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(meta);
     }
 
+    @GetMapping("/{id}/data")
+    public ResponseEntity<DataResponse> data(@PathVariable UUID id) {
+        var data = service.data(id);
+        return data == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(data);
+    }
+
     @PostMapping("/{id}/open")
     public ResponseEntity<OpenResponse> open(@PathVariable UUID id,
                                              @RequestBody(required = false) OpenRequest req) {

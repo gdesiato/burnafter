@@ -3,30 +3,32 @@
     <h1>Temporary Paste</h1>
 
     <div class="form">
-      @if (error) {
-        <div class="err">error: {{ error }}</div>
+      @if (openClicked && openError) {
+        <div class="err">error: {{ openError }}</div>
       }
 
-      @if (meta && !opened) {
+      @if (!opened) {
         <div>
           <div class="hint">
-            expires: {{ meta.expiresAt | date:'medium' }} · remaining views: {{ meta.remaining }}
+            @if (meta) {
+              expires: {{ meta.expiresAt | date:'medium' }} · remaining views: {{ meta.remaining }}
+            }
           </div>
 
-          @if (meta.protectedByPassword) {
+          @if (hasPwdFragment) {
             <div style="margin:10px 0;">
               <label>Password<br>
-                <input [(ngModel)]="password" type="password" class="in">
+                <input [(ngModel)]="password" type="password" class="in" autocomplete="current-password">
               </label>
             </div>
           }
 
-          <button class="btn" (click)="open()">open</button>
+          <button class="btn" (click)="open()" [disabled]="loadingMeta">open</button>
         </div>
       }
 
       @if (opened) {
-        <pre class="note">{{ content }}</pre>
+        <pre #noteEl class="note" tabindex="-1">{{ content }}</pre>
       }
     </div>
   </div>

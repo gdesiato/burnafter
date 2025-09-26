@@ -23,8 +23,8 @@
   .form {
     width: 720px;
     margin: 16px auto;
-    padding: 0;        /* ← no inner offset */
-    border: 0;         /* ← no outline box */
+    padding: 0;
+    border: 0;
   }
   
   .note {
@@ -34,8 +34,8 @@
     white-space: pre-wrap;
     word-break: break-word;
     border: 1px dashed var(--line);
-    background: #e9e9e9;   /* grey */
-    padding: 10px;         /* note’s own padding */
+    background: #e9e9e9;
+    padding: 10px;
     min-height: 120px;
     margin-top: 10px;
     font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace;

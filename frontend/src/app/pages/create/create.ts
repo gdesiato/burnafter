@@ -1,7 +1,8 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { PasteService } from '../../core/paste'; // or '../../core/paste.service'
+import { PasteService, ExpiresKey } from '../../core/paste.service';
+import { encryptGCM, deriveKey, genKey, exportKeyRawB64 } from '../../shared/crypto.util';
 
 @Component({
   selector: 'app-create',
@@ -11,43 +12,59 @@ import { PasteService } from '../../core/paste'; // or '../../core/paste.service
   styleUrls: ['./create.css']
 })
 export class CreateComponent {
-  title = '';
   text = '';
-  encrypt = true;     // just visual for now
-  expiresIn = '10min';
+  expiresIn: ExpiresKey = '10min';
   views = 1;
   burnAfterRead = false;
-  password = '';
-  showPwd = false;
-
+  password = '';   // optional
   loading = false;
   error: string | null = null;
   resultUrl: string | null = null;
 
   constructor(private api: PasteService) {}
 
-  submit() {
+  async submit() {
     if (!this.text.trim()) return;
-    this.loading = true; this.error = null; this.resultUrl = null;
+    this.loading = true; this.error = null;
 
-    this.api.createText(this.text, {
-      expiresIn: this.expiresIn,
-      views: Math.min(Math.max(this.views || 1, 1), 10),
-      burnAfterRead: this.burnAfterRead,
-      password: this.password || undefined
-    }).subscribe({
-      next: r => {
-        // If backend returns readUrl pointing to 8080, rebuild on the frontend origin:
-        this.resultUrl = (r.readUrl?.includes('localhost:8080'))
-          ? `${window.location.origin}/p/${r.id}`
-          : (r.readUrl || `${window.location.origin}/p/${r.id}`);
-        this.loading = false;
-      },
-      error: err => {
-        this.error = err?.error?.message || 'Failed to create link';
-        this.loading = false;
+    try {
+      let key: CryptoKey;
+      let fragment: string;
+
+      if (this.password.trim()) {
+        // --- password-protected mode ---
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const saltB64 = btoa(String.fromCharCode(...salt));
+        key = await deriveKey(this.password, saltB64);
+        fragment = `pwd:${saltB64}`; // marker so receiver knows it's pwd-based
+      } else {
+        // --- link-only mode ---
+        key = await genKey();
+        fragment = await exportKeyRawB64(key);
       }
-    });
+
+      const { ivB64, ctB64 } = await encryptGCM(this.text.trim(), key);
+
+      this.api.createText(ctB64, {
+        iv: ivB64,
+        expiresIn: this.expiresIn,
+        views: Math.min(Math.max(this.views || 1, 1), 10),
+        burnAfterRead: this.burnAfterRead,
+      }).subscribe({
+        next: r => {
+          const baseUrl = r.readUrl || `${window.location.origin}/p/${r.id}`;
+          this.resultUrl = `${baseUrl}#${fragment}`;
+          this.loading = false;
+        },
+        error: err => {
+          this.error = err?.error?.message || 'Failed to create link';
+          this.loading = false;
+        }
+      });
+    } catch (e: any) {
+      this.error = e?.message || 'Encryption failed';
+      this.loading = false;
+    }
   }
 
   copy() {
