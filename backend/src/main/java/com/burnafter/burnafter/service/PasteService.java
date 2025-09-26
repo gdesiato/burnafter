@@ -23,7 +23,6 @@ public class PasteService {
     public CreatePasteResponse create(CreatePasteRequest req, String baseUrl) {
         if (!"TEXT".equalsIgnoreCase(req.kind)) throw new IllegalArgumentException("Only TEXT supported");
 
-        // TTL + views as you already do
         int views = Math.max(1, Math.min(10, req.views));
         Duration ttl = clampTtl(parseTtl(req.expiresIn));
         UUID id = UUID.randomUUID();
@@ -36,53 +35,54 @@ public class PasteService {
         Paste p;
 
         if (req.isEncrypted()) {
+            // guards for encrypted payloads only
+            if (req.ciphertext == null || req.iv == null) {
+                throw new IllegalArgumentException("Missing ciphertext/iv");
+            }
+            if (!isB64(req.ciphertext) || !isB64(req.iv)) {
+                throw new IllegalArgumentException("Invalid base64 encoding");
+            }
+            if (Base64.getDecoder().decode(req.iv).length != 12) {
+                throw new IllegalArgumentException("IV must be 12 bytes for AES-GCM");
+            }
+            if (Base64.getDecoder().decode(req.ciphertext).length > maxTextBytes * 4) {
+                throw new IllegalArgumentException("Ciphertext too large");
+            }
+
             // ZK mode: NEVER store plaintext
-            // (Optionally enforce a max on ciphertext size, not plaintext.)
             p = new Paste(
-                    id,
-                    Paste.Kind.TEXT,
-                    null,              // contentText
-                    now,
-                    now.plus(ttl),
+                    id, Paste.Kind.TEXT,
+                    null,
+                    now, now.plus(ttl),
                     views,
                     req.burnAfterRead,
-                    false,             // hasPassword false in ZK link-key mode
-                    null               // passwordHash
+                    false,
+                    null
             );
             p.setEncrypted(true);
             p.setCiphertext(req.ciphertext);
             p.setIv(req.iv);
 
         } else if (req.isPlaintext()) {
-            // Legacy plaintext mode (what you have today)
             var bytes = req.content.getBytes(StandardCharsets.UTF_8);
             if (bytes.length > maxTextBytes) throw new IllegalArgumentException("Content too large");
 
             p = new Paste(
-                    id,
-                    Paste.Kind.TEXT,
+                    id, Paste.Kind.TEXT,
                     req.content,
-                    now,
-                    now.plus(ttl),
+                    now, now.plus(ttl),
                     views,
                     req.burnAfterRead,
                     hasPwd,
                     hash
             );
-
         } else {
             throw new IllegalArgumentException("Provide either content or ciphertext+iv");
         }
 
         store.put(id, p);
-
         String readBase = (publicBaseUrl != null && !publicBaseUrl.isBlank()) ? publicBaseUrl : baseUrl;
-        return new CreatePasteResponse(
-                id.toString(),
-                readBase + "/p/" + id,   // the client will append #key for ZK
-                p.getExpireAt(),
-                p.getViewsLeft()
-        );
+        return new CreatePasteResponse(id.toString(), readBase + "/p/" + id, p.getExpireAt(), p.getViewsLeft());
     }
 
     private Duration clampTtl(Duration ttl) {
@@ -180,4 +180,14 @@ public class PasteService {
 
         return new OpenResponse(p.getKind().name(), p.getContentText(), remaining);
     }
+
+    private static boolean isB64(String s) {
+        try {
+            Base64.getDecoder().decode(s);
+            return true;           // valid
+        } catch (Exception e) {
+            return false;          // invalid
+        }
+    }
+
 }

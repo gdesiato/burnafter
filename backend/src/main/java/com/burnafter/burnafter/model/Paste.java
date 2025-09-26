@@ -18,7 +18,7 @@ public class Paste {
     private String ciphertext; // base64
     private String iv;         // base64 (12-byte GCM IV)
 
-    private Instant createdAt;
+    private final Instant createdAt;
     private Instant expireAt;
     private int viewsLeft;
     private boolean burnAfterRead;
