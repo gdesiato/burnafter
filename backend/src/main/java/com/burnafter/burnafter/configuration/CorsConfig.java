@@ -14,8 +14,8 @@ public class CorsConfig {
                         .allowedOriginPatterns(
                                 "https://*.pages.dev",          // all Cloudflare Pages preview + default domains
                                 "https://burnafter.pages.dev",  // (optional explicit)
-                                "https://burnafter.io",         // your custom domain
-                                "https://*.burnafter.io"        // subdomains if any
+                                "https://*.burnafter.io",        // subdomains if any
+                                "http://localhost:4200"
                         )
                         .allowedMethods("GET","POST","PUT","DELETE","OPTIONS")
                         .allowedHeaders("*")
