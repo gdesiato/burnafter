@@ -11,6 +11,10 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import java.net.URI;
 import java.util.UUID;
 
+@CrossOrigin(origins = {
+        "https://gdesiato.github.io",
+        "http://localhost:4200"
+}, methods = { RequestMethod.GET, RequestMethod.POST, RequestMethod.OPTIONS })
 @RestController
 @RequestMapping("/api/pastes")
 public class PasteController {
