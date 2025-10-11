@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 import java.util.UUID;
@@ -22,7 +23,7 @@ public class PasteController {
     @PostMapping
     public ResponseEntity<CreatePasteResponse> create(@Valid @RequestBody CreatePasteRequest req,
                                                       HttpServletRequest http) {
-        var base = baseUrl(http);
+        var base = externalBaseUrl(http);
         var resp = service.create(req, base);
         return ResponseEntity.created(URI.create(resp.readUrl())).body(resp);
     }
@@ -50,11 +51,11 @@ public class PasteController {
         }
     }
 
-    private static String baseUrl(HttpServletRequest req) {
-        var proto = req.getHeader("X-Forwarded-Proto");
-        if (proto == null) proto = req.getScheme();
-        var host = req.getHeader("X-Forwarded-Host");
-        if (host == null) host = req.getHeader("Host");
-        return proto + "://" + host;
+    private static String externalBaseUrl(HttpServletRequest req) {
+        return ServletUriComponentsBuilder.fromRequest(req)
+                .replacePath(null)   // strip the /api/pastes etc.
+                .replaceQuery(null)  // strip any query params
+                .build()
+                .toUriString();
     }
 }
