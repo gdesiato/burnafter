@@ -5,7 +5,7 @@ import { environment } from '../../environments/environment';
 
 export type ExpiresKey = '10min' | '1h' | '24h' | '7d';
 
-/** Back-end payloads */
+/** Requests */
 export interface CreatePlainRequest {
   kind: 'TEXT';
   content: string;
@@ -14,7 +14,6 @@ export interface CreatePlainRequest {
   burnAfterRead: boolean;
   password?: string;
 }
-
 export interface CreateEncryptedRequest {
   kind: 'TEXT';
   ciphertext: string;  // base64
@@ -24,28 +23,34 @@ export interface CreateEncryptedRequest {
   burnAfterRead: boolean;
 }
 
-/** Back-end responses (match your Spring records) */
-export interface CreateResponse {
+/** Raw responses from Spring */
+interface CreateResponseRaw {
   id: string;
   readUrl?: string;
-  /** NOTE: Spring returns `expireAt` & `viewsLeft` in your codebase */
-  expireAt: string;
-  viewsLeft: number;
+  expireAt: string;   // <- raw
+  viewsLeft: number;  // <- raw
 }
+interface MetaResponseRaw {
+  kind: string;
+  expireAt: string;        // <- raw
+  viewsLeft: number;       // <- raw
+  hasPassword: boolean;    // <- raw
+}
+export interface PasteData { iv: string; ciphertext: string; }
 
-export interface PasteMeta {
+/** Normalized responses used by the UI */
+export interface CreateResponse {
+  id: string;
+  readUrl: string;
   expiresAt: string;
   remaining: number;
-  protectedByPassword?: boolean;
-  hasCiphertext?: boolean; // optional; some backends include this
 }
-
-export interface PasteData {
-  iv: string;
-  ciphertext: string;
+export interface PasteMeta {
+  kind: string;
+  expiresAt: string;
+  remaining: number;
+  protectedByPassword: boolean;
 }
-
-/** Optional: legacy plaintext open response */
 export interface OpenResponse {
   kind: string;
   content: string;
@@ -54,65 +59,56 @@ export interface OpenResponse {
 
 @Injectable({ providedIn: 'root' })
 export class PasteService {
-  /** Use absolute base so the SPA on Cloudflare Pages can call your API anywhere */
   private readonly base = `${environment.apiBase}/api/pastes`;
 
   constructor(private http: HttpClient) {}
 
-  /**
-   * Create a paste.
-   * - If opts.iv is present -> ciphertext mode (E2EE)
-   * - Otherwise -> plaintext mode (legacy/password)
-   */
+  /** Create paste (plaintext or encrypted if iv provided) */
   createText(
     data: string,
-    opts: {
-      expiresIn: ExpiresKey;
-      views: number;
-      burnAfterRead: boolean;
-      password?: string;
-      iv?: string; // presence => ciphertext mode
-    }
-  ): Observable<CreateResponse & { readUrl: string }> {
+    opts: { expiresIn: ExpiresKey; views: number; burnAfterRead: boolean; password?: string; iv?: string }
+  ): Observable<CreateResponse> {
     const body: CreatePlainRequest | CreateEncryptedRequest = opts.iv
-      ? {
-          kind: 'TEXT',
-          ciphertext: data,
-          iv: opts.iv!,
-          expiresIn: opts.expiresIn,
-          views: opts.views,
-          burnAfterRead: opts.burnAfterRead,
-        }
-      : {
-          kind: 'TEXT',
-          content: data,
-          expiresIn: opts.expiresIn,
-          views: opts.views,
-          burnAfterRead: opts.burnAfterRead,
-          password: opts.password,
-        };
+      ? { kind: 'TEXT', ciphertext: data, iv: opts.iv, expiresIn: opts.expiresIn, views: opts.views, burnAfterRead: opts.burnAfterRead }
+      : { kind: 'TEXT', content: data,        expiresIn: opts.expiresIn, views: opts.views, burnAfterRead: opts.burnAfterRead, password: opts.password };
 
-    return this.http.post<CreateResponse>(this.base, body).pipe(
-      // normalize readUrl fallback for convenience
-      map((res) => ({
-        ...res,
-        readUrl: res.readUrl || `${location.origin}/p/${res.id}`,
+    return this.http.post<CreateResponseRaw>(this.base, body).pipe(
+      map((raw) => ({
+        id: raw.id,
+        // If backend gives a readUrl use it; otherwise build from <base href> so /REPO_NAME/ works on GitHub Pages
+        readUrl: raw.readUrl || `${this.baseHref()}/p/${raw.id}`,
+        expiresAt: raw.expireAt,
+        remaining: raw.viewsLeft,
       }))
     );
   }
 
-  /** Metadata endpoint: GET /api/pastes/{id}  (not /meta) */
+  /** GET /api/pastes/{id} */
   getMeta(id: string): Observable<PasteMeta> {
-    return this.http.get<PasteMeta>(`${this.base}/${encodeURIComponent(id)}`);
+    return this.http.get<MetaResponseRaw>(`${this.base}/${encodeURIComponent(id)}`).pipe(
+      map((raw) => ({
+        kind: raw.kind,
+        expiresAt: raw.expireAt,
+        remaining: raw.viewsLeft,
+        protectedByPassword: raw.hasPassword,
+      }))
+    );
   }
 
-  /** Encrypted data endpoint: GET /api/pastes/{id}/data */
+  /** GET /api/pastes/{id}/data (for encrypted mode) */
   getData(id: string): Observable<PasteData> {
     return this.http.get<PasteData>(`${this.base}/${encodeURIComponent(id)}/data`);
   }
 
-  /** Legacy plaintext open: POST /api/pastes/{id}/open  */
-  open(id: string): Observable<OpenResponse> {
-    return this.http.post<OpenResponse>(`${this.base}/${encodeURIComponent(id)}/open`, {});
+  /** POST /api/pastes/{id}/open  (send password if required) */
+  open(id: string, password?: string): Observable<OpenResponse> {
+    return this.http.post<OpenResponse>(`${this.base}/${encodeURIComponent(id)}/open`, password ? { password } : {});
+  }
+
+  /** Build absolute base from the document’s <base href> (works on GitHub Pages subpaths) */
+  private baseHref(): string {
+    const base = document.querySelector('base')?.href || location.origin;
+    // strip trailing slash
+    return base.endsWith('/') ? base.slice(0, -1) : base;
   }
 }
