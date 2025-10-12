@@ -52,8 +52,7 @@ export class CreateComponent {
         burnAfterRead: this.burnAfterRead,
       }).subscribe({
         next: r => {
-          const baseUrl = r.readUrl || `${window.location.origin}/p/${r.id}`;
-          this.resultUrl = `${baseUrl}#${fragment}`;
+          this.resultUrl = `${r.readUrl}#${fragment}`;  // always trust backend URL
           this.loading = false;
         },
         error: err => {
