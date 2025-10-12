@@ -7,7 +7,7 @@
   "build": "ng build",
   "watch": "ng build --watch --configuration development",
   "test": "ng test",
-  "deploy-gh": "rm -rf dist && ng build --configuration production && grep -R \"localhost:8080\" dist/burnafter-ui/browser || echo '✅ no localhost found' && npx angular-cli-ghpages --dir=dist/burnafter-ui/browser"
+  "deploy-gh": "rm -rf dist && ng build --configuration production && grep -R \"localhost:8080\" dist/burnafter-ui/browser || echo 'no localhost found' && npx angular-cli-ghpages --dir=dist/burnafter-ui/browser"
   },
   "prettier": {
     "printWidth": 100,
