@@ -1,0 +1,55 @@
+name: Build & Deploy Angular to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-gh-pages.yml"
+
+concurrency:
+  group: deploy-gh-pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20 (LTS)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install deps (lockfile)
+        run: npm ci
+
+      - name: Build Angular (prod, correct base)
+        run: |
+          npx ng build --configuration production --base-href=/burnafter/ --deploy-url=/burnafter/
+          # SPA fallback for deep links
+          cp dist/burnafter-ui/browser/index.html dist/burnafter-ui/browser/404.html
+
+      - name: Sanity: ensure no localhost in bundle
+        run: |
+          if grep -R "localhost:8080" dist/burnafter-ui/browser; then
+            echo "Found localhost in build"; exit 1;
+          else
+            echo "no localhost found";
+          fi
+
+      - name: Deploy to gh-pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: frontend/dist/burnafter-ui/browser
+          clean: true
+
