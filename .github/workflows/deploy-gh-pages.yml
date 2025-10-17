@@ -10,15 +10,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to push to gh-pages
     defaults:
       run:
         working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20.19.0
+        uses: actions/setup-node@v4
         with:
           node-version: 20.19.0
           cache: npm
@@ -27,27 +32,24 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Build (prod, correct base)
+      - name: Build Angular (prod, correct base)
         run: |
           npx ng build --configuration production --base-href=/burnafter/ --deploy-url=/burnafter/
-          # SPA fallback
+          # SPA fallback for deep links
           cp dist/burnafter-ui/browser/index.html dist/burnafter-ui/browser/404.html
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: frontend/dist/burnafter-ui/browser
+      - name: Sanity: ensure no localhost in bundle
+        run: |
+          if grep -R "localhost:" dist/burnafter-ui/browser; then
+            echo "Found localhost in build"; exit 1;
+          else
+            echo "no localhost found";
+          fi
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy to gh-pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: frontend/dist/burnafter-ui/browser
+          clean: true
 
