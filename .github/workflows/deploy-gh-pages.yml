@@ -1,0 +1,43 @@
+# .github/workflows/deploy-gh-pages.yml
+name: Build & Deploy to gh-pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-gh-pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required to push to gh-pages
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build Angular (prod, correct base)
+        run: |
+          npx ng build --configuration production --base-href=/burnafter/ --deploy-url=/burnafter/
+          cp dist/burnafter-ui/browser/index.html dist/burnafter-ui/browser/404.html
+
+      - name: Deploy to gh-pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: frontend/dist/burnafter-ui/browser
+          clean: true
