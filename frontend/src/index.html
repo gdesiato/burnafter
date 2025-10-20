@@ -1,13 +1,30 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <meta charset="utf-8">
   <title>BurnAfter</title>
   <meta name="description" content="BurnAfter is a minimal pastebin that encrypts content in your browser. Share secrets that self-destruct after reading.">
+  <!-- If deploying to GitHub Pages under /burnafter/, this is usually overridden at build with --base-href.
+       If you keep index.html committed, set it to /burnafter/ for local static previews. -->
   <base href="/">
+
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Strict CSP: single line is safest -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; script-src-attr 'none'; object-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://burnafter.onrender.com; frame-ancestors 'none'; base-uri 'none'; form-action 'self'">
+
+  <!-- Don’t leak URL/fragment in Referer -->
+  <meta name="referrer" content="no-referrer">
+
+  <!-- Hint: no caching on the static page (headers would be stronger, but GH Pages can’t set them) -->
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
   <app-root></app-root>
 </body>
 </html>
+

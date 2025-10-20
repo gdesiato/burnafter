@@ -25,19 +25,30 @@ public class PasteController {
                                                       HttpServletRequest http) {
         var base = externalBaseUrl(http);
         var resp = service.create(req, base);
-        return ResponseEntity.created(URI.create(resp.readUrl())).body(resp);
+        return ResponseEntity.created(URI.create(resp.readUrl()))
+                .cacheControl(CacheControl.noStore())
+                .header("Pragma", "no-cache")
+                .body(resp);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<MetaResponse> meta(@PathVariable UUID id) {
         var meta = service.meta(id);
-        return meta == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(meta);
+        if (meta == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header("Pragma", "no-cache")
+                .body(meta);
     }
 
     @GetMapping("/{id}/data")
     public ResponseEntity<DataResponse> data(@PathVariable UUID id) {
         var data = service.data(id);
-        return data == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(data);
+        if (data == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header("Pragma", "no-cache")
+                .body(data);
     }
 
     @PostMapping("/{id}/open")
@@ -45,7 +56,11 @@ public class PasteController {
                                              @RequestBody(required = false) OpenRequest req) {
         try {
             var out = service.open(id, req);
-            return out == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(out);
+            if (out == null) return ResponseEntity.notFound().build();
+            return ResponseEntity.ok()
+                    .cacheControl(CacheControl.noStore())
+                    .header("Pragma", "no-cache")
+                    .body(out);
         } catch (SecurityException se) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
@@ -53,9 +68,10 @@ public class PasteController {
 
     private static String externalBaseUrl(HttpServletRequest req) {
         return ServletUriComponentsBuilder.fromRequest(req)
-                .replacePath(null)   // strip the /api/pastes etc.
-                .replaceQuery(null)  // strip any query params
+                .replacePath(null)
+                .replaceQuery(null)
                 .build()
                 .toUriString();
     }
 }
+
