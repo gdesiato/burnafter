@@ -9,12 +9,6 @@
 
       @if (!opened) {
         <div>
-          <div class="hint">
-            @if (meta) {
-              expires: {{ meta.expiresAt | date:'medium' }} · remaining views: {{ meta.remaining }}
-            }
-          </div>
-
           @if (hasPwdFragment) {
             <div style="margin:10px 0;">
               <label>Password<br>
