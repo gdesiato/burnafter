@@ -48,6 +48,10 @@ public class Paste {
     public String getContentText() { return contentText; }
     public void setContentText(String contentText) { this.contentText = contentText; }
 
+    public boolean isExpired() {
+        return expireAt != null && Instant.now().isAfter(expireAt);
+    }
+
     public boolean isEncrypted() { return encrypted; }
     public void setEncrypted(boolean encrypted) { this.encrypted = encrypted; }
 

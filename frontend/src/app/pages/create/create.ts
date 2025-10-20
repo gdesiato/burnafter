@@ -47,7 +47,8 @@ export class CreateComponent {
 
       this.api.createText(ctB64, {
         iv: ivB64,
-        expiresIn: this.expiresIn,
+        // send null (or omit) when "never" is selected
+        expiresIn: this.expiresIn === 'never' ? (null as any) : this.expiresIn,
         views: Math.min(Math.max(this.views || 1, 1), 10),
         burnAfterRead: this.burnAfterRead,
       }).subscribe({
