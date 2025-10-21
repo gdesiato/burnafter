@@ -24,7 +24,7 @@ export class CreateComponent {
   constructor(private api: PasteService) {}
 
   async submit() {
-    if (!this.text.trim()) return;
+    if (!this.text.trim() || this.overByteLimit) return;
     this.loading = true; this.error = null;
 
     try {
@@ -69,4 +69,27 @@ export class CreateComponent {
   copy() {
     if (this.resultUrl) navigator.clipboard.writeText(this.resultUrl);
   }
+  maxBytes = 20000; // keep in sync with backend
+
+  get charCount(): number {
+    return this.text.length;
+  }
+  
+  get byteCount(): number {
+    return new TextEncoder().encode(this.text).length;
+  }
+  
+  get bytesRemaining(): number {
+    return Math.max(0, this.maxBytes - this.byteCount);
+  }
+  
+  get overByteLimit(): boolean {
+    return this.byteCount > this.maxBytes;
+  }
+  
+  get counterColor(): string {
+    if (this.overByteLimit) return '#d32f2f';
+    return '#64748b';
+  }
+
 }

@@ -116,4 +116,28 @@
     margin-top: 10px;
     font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace;
   }
+
+  .counter {
+    font-size: 0.9rem;
+    margin-top: 4px;
+  }
+  .counter .muted {
+    color: #94a3b8; /* slate-400 */
+    margin-left: 6px;
+    font-size: 0.85em;
+  }
+  .counter-bar {
+    position: relative;
+    height: 4px;
+    background: #e2e8f0; /* slate-200 */
+    border-radius: 999px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .counter-bar__fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    transition: width 120ms linear;
+  }
   

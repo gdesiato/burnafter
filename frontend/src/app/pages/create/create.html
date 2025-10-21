@@ -5,9 +5,23 @@
     <form (ngSubmit)="submit()">
       <p>
         <label>Content<br>
-          <textarea [(ngModel)]="text" name="text" rows="12" maxlength="20000" required></textarea>
+          <textarea [(ngModel)]="text" name="text" rows="12" required></textarea>
         </label>
-      </p>
+        
+        <!-- Byte + char counter -->
+        <div class="counter" [style.color]="counterColor" aria-live="polite">
+          {{ byteCount | number }} / {{ maxBytes | number }} bytes
+          <span class="muted">({{ charCount | number }} chars)</span>
+        </div>
+        
+        <p>
+          <button type="submit" [disabled]="loading || !text.trim() || overByteLimit">create</button>
+        </p>
+        
+        <!-- Friendly error if over limit -->
+        <div class="error" *ngIf="overByteLimit">
+          Paste too large. Reduce by {{ byteCount - maxBytes }} bytes.
+        </div>
 
       <p>
         <label>Expires<br>
