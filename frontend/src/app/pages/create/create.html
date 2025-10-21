@@ -5,7 +5,7 @@
     <form (ngSubmit)="submit()">
       <p>
         <label>Content<br>
-          <textarea [(ngModel)]="text" name="text" rows="12" required></textarea>
+          <textarea [(ngModel)]="text" name="text" rows="12" maxlength="20000" required></textarea>
         </label>
       </p>
 
