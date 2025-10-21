@@ -16,7 +16,7 @@ export class CreateComponent {
   expiresIn: ExpiresKey = '10min';
   views = 1;
   burnAfterRead = false;
-  password = '';   // optional
+  password = '';
   loading = false;
   error: string | null = null;
   resultUrl: string | null = null;
@@ -47,8 +47,7 @@ export class CreateComponent {
 
       this.api.createText(ctB64, {
         iv: ivB64,
-        // send null (or omit) when "never" is selected
-        expiresIn: this.expiresIn === 'never' ? (null as any) : this.expiresIn,
+        expiresIn: this.expiresIn,
         views: Math.min(Math.max(this.views || 1, 1), 10),
         burnAfterRead: this.burnAfterRead,
       }).subscribe({
