@@ -25,30 +25,24 @@ export class PasteService {
     data: string,
     opts: { expiresIn: ExpiresKey; views: number; burnAfterRead: boolean; password?: string; iv?: string }
   ): Observable<CreateResponse> {
-    // Build common fields
     const common = {
       kind: 'TEXT' as const,
       views: opts.views,
-      burnAfterRead: opts.burnAfterRead
+      burnAfterRead: opts.burnAfterRead,
+      expiresIn: opts.expiresIn, // always send one of: '10min' | '1h' | '24h' | '7d'
     };
 
-    // If "never", omit expiresIn (or set it to null if your backend prefers)
-    const expiryPart =
-      opts.expiresIn === 'never'
-        ? {} // or: { expiresIn: null }
-        : { expiresIn: opts.expiresIn };
-
-    // Two payload variants depending on whether you send raw content+password or ciphertext+iv
     const body =
       opts.iv
-        ? { ...common, ...expiryPart, ciphertext: data, iv: opts.iv }
-        : { ...common, ...expiryPart, content: data, password: opts.password };
+        ? { ...common, ciphertext: data, iv: opts.iv }
+        : { ...common, content: data, password: opts.password };
 
     return this.http.post<CreateResponseRaw>(this.base, body).pipe(
       map(raw => ({
         id: raw.id,
         readUrl: raw.readUrl || `${this.baseHref()}/p/${raw.id}`,
-        expiresAt: raw.expireAt ?? null, // null means no expiration
+        // keep null to support legacy pastes that had no expiry
+        expiresAt: raw.expireAt ?? null,
         remaining: raw.viewsLeft
       }))
     );
@@ -78,3 +72,4 @@ export class PasteService {
     return base.endsWith('/') ? base.slice(0, -1) : base;
   }
 }
+
