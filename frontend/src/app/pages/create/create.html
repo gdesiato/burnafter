@@ -13,19 +13,7 @@
           {{ charCount | number }} / {{ maxChars | number }}
           <span class="muted">chars</span>
         </div>
-        
-        <div class="counter-bar">
-          <div class="counter-bar__fill"
-               [style.width.%]="charPercent"
-               [style.background]="counterColor"></div>
-        </div>
-        
-        <!-- disable submit if too long -->
-        <button type="submit" [disabled]="loading || !text.trim() || overCharLimit">create</button>
-        
-        <div class="error" *ngIf="overCharLimit">
-          Paste too long. Reduce by {{ charCount - maxChars }} characters.
-        </div>
+      
 
       <p>
         <label>Expires<br>
@@ -57,9 +45,12 @@
         no password ⇒ the link is the key. keep it safe.
       </p>
 
-      <p>
-        <button type="submit" [disabled]="loading || !text.trim()">create</button>
-      </p>
+      <!-- disable submit if too long -->
+      <button type="submit" [disabled]="loading || !text.trim() || overCharLimit">create</button>
+        
+      <div class="error" *ngIf="overCharLimit">
+        Paste too long. Reduce by {{ charCount - maxChars }} characters.
+      </div>
 
       @if (error) {
         <div class="error">error: {{ error }}</div>
