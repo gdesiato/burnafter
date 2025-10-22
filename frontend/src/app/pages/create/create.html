@@ -8,15 +8,10 @@
           <textarea [(ngModel)]="text" name="text" rows="12" required></textarea>
         </label>
         
-        <!-- Byte + char counter -->
+        <!-- char counter -->
         <div class="counter" [style.color]="counterColor" aria-live="polite">
-          {{ byteCount | number }} / {{ maxBytes | number }} bytes
           <span class="muted">({{ charCount | number }} chars)</span>
         </div>
-        
-        <p>
-          <button type="submit" [disabled]="loading || !text.trim() || overByteLimit">create</button>
-        </p>
         
         <!-- Friendly error if over limit -->
         <div class="error" *ngIf="overByteLimit">
