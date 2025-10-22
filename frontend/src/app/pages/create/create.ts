@@ -24,7 +24,7 @@ export class CreateComponent {
   constructor(private api: PasteService) {}
 
   async submit() {
-    if (!this.text.trim() || this.overByteLimit) return;
+    if (!this.text.trim() || this.overCharLimit) return;
     this.loading = true; this.error = null;
 
     try {
@@ -69,27 +69,24 @@ export class CreateComponent {
   copy() {
     if (this.resultUrl) navigator.clipboard.writeText(this.resultUrl);
   }
-  maxBytes = 20000; // keep in sync with backend
+  maxChars = 12000; // or whatever limit you want
 
   get charCount(): number {
     return this.text.length;
   }
-  
-  get byteCount(): number {
-    return new TextEncoder().encode(this.text).length;
+
+  get overCharLimit(): boolean {
+    return this.charCount > this.maxChars;
   }
-  
-  get bytesRemaining(): number {
-    return Math.max(0, this.maxBytes - this.byteCount);
+
+  get charPercent(): number {
+    return Math.min(100, Math.round((this.charCount / this.maxChars) * 100));
   }
-  
-  get overByteLimit(): boolean {
-    return this.byteCount > this.maxBytes;
-  }
-  
+
   get counterColor(): string {
-    if (this.overByteLimit) return '#d32f2f';
-    return '#64748b';
+    if (this.overCharLimit) return '#d32f2f';       // red
+    if (this.charPercent >= 90) return '#ed6c02';   // orange near limit
+    return '#64748b';                                // neutral
   }
 
 }

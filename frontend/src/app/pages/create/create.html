@@ -10,12 +10,21 @@
         
         <!-- char counter -->
         <div class="counter" [style.color]="counterColor" aria-live="polite">
-          <span class="muted">({{ charCount | number }} chars)</span>
+          {{ charCount | number }} / {{ maxChars | number }}
+          <span class="muted">chars</span>
         </div>
         
-        <!-- Friendly error if over limit -->
-        <div class="error" *ngIf="overByteLimit">
-          Paste too large. Reduce by {{ byteCount - maxBytes }} bytes.
+        <div class="counter-bar">
+          <div class="counter-bar__fill"
+               [style.width.%]="charPercent"
+               [style.background]="counterColor"></div>
+        </div>
+        
+        <!-- disable submit if too long -->
+        <button type="submit" [disabled]="loading || !text.trim() || overCharLimit">create</button>
+        
+        <div class="error" *ngIf="overCharLimit">
+          Paste too long. Reduce by {{ charCount - maxChars }} characters.
         </div>
 
       <p>
