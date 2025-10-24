@@ -1,149 +1,140 @@
 /* Optional globals */
 :root {
-    --line: #000;
-    --fg: #000;
-    --muted: #666;
-  }
-  
-  .page {
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: #fff;
-    color: var(--fg, #000);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-    font-size: 14px;
-  }
-  
-  .container {
-    max-width: 700px;
-    width: 100%;
-    padding: 20px;
-  }
-  
-  h1 {
-    font-size: 20px;
-    margin-bottom: 16px;
-  }
-  
-  /* Generic controls (EXCEPT checkboxes) */
-  textarea,
-  input:not([type="checkbox"]),
-  select,
-  button {
-    font-family: inherit;
-    font-size: inherit;
-    border: 1px solid var(--line, #000);
-    background: #fff;
-    color: var(--fg, #000);
-    padding: 4px 6px;
-    -webkit-appearance: none;
-    appearance: none;
-  }
-  
-  /* Restore native checkbox look & clickability */
-  input[type="checkbox"] {
-    -webkit-appearance: auto;
-    appearance: auto;
-    border: initial;
-    background: initial;
-    padding: 0;
-    width: 16px;
-    height: 16px;
-    vertical-align: middle;
-    margin: 0 6px 0 0;
-    cursor: pointer;
-  }
-  
-  /* Full width for text-ish inputs */
-  textarea,
-  input[type="text"],
-  input[type="password"],
-  input[readonly] {
-    width: 100%;
-  }
-  
-  textarea {
-    resize: both;             
-    min-height: 120px;        
-    min-width: 500px;          
-  }
-  
-  input[type="number"] {
-    width: 80px;
-  }
-  
-  button {
-    cursor: pointer;
-    background: #eee;
-  }
-  
-  button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-  
-  label {
-    display: inline-block;
-    margin-bottom: 8px;
-  }
-  
-  p {
-    margin: 10px 0;
-  }
-  
-  .hint {
-    color: var(--muted, #666);
-    font-size: 12px;
-    margin-top: -6px;
-  }
-  
-  .error {
-    color: #b00020;
-  }
-  
-  input[readonly] {
-    background: #f9f9f9;
-  }
-  
-  .note {
-    white-space: pre-wrap;
-    border: 1px dashed var(--line, #000);
-    background: #f5f5f5;
-    padding: 10px;
-    min-height: 120px;
-    margin-top: 10px;
-    font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace;
-  }
+  --line: #000;
+  --fg: #000;
+  --muted: #666;
+}
 
-  .counter {
-    font-size: 0.9rem;
-    margin-top: 4px;
-  }
-  .counter .muted {
-    color: #94a3b8; /* slate-400 */
-    margin-left: 6px;
-    font-size: 0.85em;
-  }
-  .counter-bar {
-    position: relative;
-    height: 4px;
-    background: #e2e8f0; /* slate-200 */
-    border-radius: 999px;
-    margin-top: 6px;
-    overflow: hidden;
-  }
-  .counter-bar__fill {
-    height: 100%;
-    width: 0%;
-    border-radius: 999px;
-    transition: width 120ms linear;
-  }
+/* Layout */
+.page {
+  /* better on mobile keyboards than height: 100vh */
+  min-height: 100svh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;   /* avoid vertical jump on mobile */
+  padding-top: 24px;
+  background: #fff;
+  color: var(--fg, #000);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 14px;
+}
 
+.container {
+  max-width: 700px;
+  width: 100%;
+  padding: 20px;
+}
 
+h1 {
+  font-size: 20px;
+  margin-bottom: 16px;
+}
 
-.textarea-wrapper { 
+/* Generic controls (EXCEPT checkboxes) */
+textarea,
+input:not([type="checkbox"]),
+select,
+button {
+  font-family: inherit;
+  font-size: inherit;
+  border: 1px solid var(--line, #000);
+  background: #fff;
+  color: var(--fg, #000);
+  padding: 4px 6px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Restore native checkbox look & clickability */
+input[type="checkbox"] {
+  -webkit-appearance: auto;
+  appearance: auto;
+  border: initial;
+  background: initial;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  margin: 0 6px 0 0;
+  cursor: pointer;
+}
+
+/* Full width for text-ish inputs */
+textarea,
+input[type="text"],
+input[type="password"],
+input[readonly] {
+  width: 100%;
+}
+
+input[type="number"] {
+  width: 80px;
+}
+
+button {
+  cursor: pointer;
+  background: #eee;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+label {
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
+p { margin: 10px 0; }
+
+.hint {
+  color: var(--muted, #666);
+  font-size: 12px;
+  margin-top: -6px;
+}
+
+.error { color: #b00020; }
+
+input[readonly] { background: #f9f9f9; }
+
+.note {
+  white-space: pre-wrap;
+  border: 1px dashed var(--line, #000);
+  background: #f5f5f5;
+  padding: 10px;
+  min-height: 120px;
+  margin-top: 10px;
+  font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace;
+}
+
+/* ===== Character counter styles (outside version, if ever used) ===== */
+.counter {
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+.counter .muted {
+  color: #94a3b8; /* slate-400 */
+  margin-left: 6px;
+  font-size: 0.85em;
+}
+.counter-bar {
+  position: relative;
+  height: 4px;
+  background: #e2e8f0; /* slate-200 */
+  border-radius: 999px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.counter-bar__fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  transition: width 120ms linear;
+}
+
+/* ===== Textarea wrapper with in-corner counter ===== */
+.textarea-wrapper {
   --counter-h: 18px;
   --counter-pad: 10px;
   position: relative;
@@ -151,34 +142,49 @@
   width: 100%;
 }
 
-/* make sure this selector wins */
+/* IMPORTANT: responsive textarea (no fixed min-width), leave space for counter */
 .textarea-wrapper > textarea {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;                          /* allow shrinking on small screens */
   box-sizing: border-box;
   line-height: 1.4;
-  padding: 12px 12px calc(var(--counter-h) + var(--counter-pad) + 6px) 12px; /* extra bottom space */
-  resize: vertical;
+  padding: 12px 12px calc(var(--counter-h) + var(--counter-pad) + 6px) 12px;
+  resize: vertical;                       /* vertical-only; avoids horizontal handle */
+  min-height: 120px;
 }
 
-/* counter in the corner */
+/* Counter inside the bottom-right corner */
 .textarea-wrapper .counter {
   position: absolute;
   right: var(--counter-pad);
   bottom: var(--counter-pad);
   font-size: 0.8rem;
   color: #6b7280;
-  pointer-events: none;
-  /* optional: ensure readability over text */
-  background: rgba(255,255,255,0.8);
+  pointer-events: none;                   /* don’t block caret clicks */
+  background: rgba(255, 255, 255, 0.8);   /* readable over text */
   padding: 1px 4px;
   border-radius: 4px;
 }
 
-.textarea-wrapper .muted { opacity: 0.7; font-size: 0.75rem; }
+.textarea-wrapper .counter .muted {
+  opacity: 0.7;
+  font-size: 0.75rem;
+}
 
-  
-  .textarea-wrapper .muted {
-    opacity: 0.7;
-    font-size: 0.75rem;
+/* ===== Responsive ===== */
+@media (max-width: 600px) {
+  .container { padding: 12px; }
+
+  .textarea-wrapper > textarea {
+    font-size: 0.95rem;
+    min-height: 160px; /* a bit shorter on phones */
+    padding-bottom: calc(var(--counter-h) + var(--counter-pad) + 8px);
   }
-  
+
+  .textarea-wrapper .counter {
+    font-size: 0.72rem;
+    right: 8px;
+    bottom: 6px;
+  }
+}
