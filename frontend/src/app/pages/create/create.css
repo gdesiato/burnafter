@@ -142,29 +142,40 @@
   }
 
 
-  .textarea-wrapper {
-    position: relative;
-    display: inline-block;
-    width: 100%;
-  }
-  
-  .textarea-wrapper textarea {
-    width: 100%;
-    box-sizing: border-box;
-    padding-bottom: 24px; /* leave space for the counter */
-    resize: vertical;
-    font-family: inherit;
-    font-size: 1rem;
-  }
-  
-  .textarea-wrapper .counter {
-    position: absolute;
-    bottom: 6px;
-    right: 10px;
-    font-size: 0.8rem;
-    color: #888;
-    pointer-events: none; /* prevents clicking it */
-  }
+
+.textarea-wrapper { 
+  --counter-h: 18px;
+  --counter-pad: 10px;
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+/* make sure this selector wins */
+.textarea-wrapper > textarea {
+  width: 100%;
+  box-sizing: border-box;
+  line-height: 1.4;
+  padding: 12px 12px calc(var(--counter-h) + var(--counter-pad) + 6px) 12px; /* extra bottom space */
+  resize: vertical;
+}
+
+/* counter in the corner */
+.textarea-wrapper .counter {
+  position: absolute;
+  right: var(--counter-pad);
+  bottom: var(--counter-pad);
+  font-size: 0.8rem;
+  color: #6b7280;
+  pointer-events: none;
+  /* optional: ensure readability over text */
+  background: rgba(255,255,255,0.8);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.textarea-wrapper .muted { opacity: 0.7; font-size: 0.75rem; }
+
   
   .textarea-wrapper .muted {
     opacity: 0.7;
