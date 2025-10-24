@@ -140,4 +140,34 @@
     border-radius: 999px;
     transition: width 120ms linear;
   }
+
+
+  .textarea-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+  }
+  
+  .textarea-wrapper textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding-bottom: 24px; /* leave space for the counter */
+    resize: vertical;
+    font-family: inherit;
+    font-size: 1rem;
+  }
+  
+  .textarea-wrapper .counter {
+    position: absolute;
+    bottom: 6px;
+    right: 10px;
+    font-size: 0.8rem;
+    color: #888;
+    pointer-events: none; /* prevents clicking it */
+  }
+  
+  .textarea-wrapper .muted {
+    opacity: 0.7;
+    font-size: 0.75rem;
+  }
   

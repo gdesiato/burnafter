@@ -4,14 +4,16 @@
 
     <form (ngSubmit)="submit()">
       <p>
-        <label>Content<br>
+        <label>Content<br></label>
+      
+        <div class="textarea-wrapper">
           <textarea [(ngModel)]="text" name="text" rows="12" required></textarea>
-        </label>
-        
-        <!-- char counter -->
-        <div class="counter" [style.color]="counterColor" aria-live="polite">
-          {{ charCount | number }} / {{ maxChars | number }}
-          <span class="muted">chars</span>
+      
+          <!-- counter inside bottom-right corner -->
+          <div class="counter" [style.color]="counterColor" aria-live="polite">
+            {{ charCount | number }} / {{ maxChars | number }}
+            <span class="muted">chars</span>
+          </div>
         </div>
       
 
