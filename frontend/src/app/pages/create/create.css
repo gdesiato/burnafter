@@ -188,3 +188,61 @@ input[readonly] { background: #f9f9f9; }
     bottom: 6px;
   }
 }
+
+.result-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.copy-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--line, #000);
+  background: #eee;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.copy-btn:active { transform: translateY(1px); }
+
+.copy-btn .check {
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.copy-btn.copied {
+  background: #e7f9ef;          /* light green */
+  border-color: #22c55e;
+  color: #16a34a;
+}
+
+.copy-btn.copied .check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  animation: toast-in 180ms ease-out;
+  pointer-events: none;
+}
+
+@keyframes toast-in {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+

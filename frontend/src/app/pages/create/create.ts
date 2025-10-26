@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PasteService, ExpiresKey } from '../../core/paste.service';
@@ -21,11 +21,17 @@ export class CreateComponent {
   error: string | null = null;
   resultUrl: string | null = null;
 
+  copied = false;
+  private copyTimer: any;
+
+  @ViewChild('resultInput') resultInput?: ElementRef<HTMLInputElement>;
+
   constructor(private api: PasteService) {}
 
   async submit() {
     if (!this.text.trim() || this.overCharLimit) return;
-    this.loading = true; this.error = null;
+    this.loading = true;
+    this.error = null;
 
     try {
       let key: CryptoKey;
@@ -66,10 +72,32 @@ export class CreateComponent {
     }
   }
 
-  copy() {
-    if (this.resultUrl) navigator.clipboard.writeText(this.resultUrl);
+  /** copy method with animation + fallback */
+  async copy() {
+    if (!this.resultUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(this.resultUrl);
+      this.flashCopied();
+    } catch {
+      const el = this.resultInput?.nativeElement;
+      if (el) {
+        el.focus();
+        el.select();
+        const ok = document.execCommand?.('copy');
+        if (ok) this.flashCopied();
+      }
+    }
   }
-  maxChars = 12000; // or whatever limit you want
+
+  /** Internal helper: show “Copied!” briefly */
+  private flashCopied() {
+    this.copied = true;
+    clearTimeout(this.copyTimer);
+    this.copyTimer = setTimeout(() => (this.copied = false), 1200);
+  }
+
+  maxChars = 12000;
 
   get charCount(): number {
     return this.text.length;
@@ -86,7 +114,7 @@ export class CreateComponent {
   get counterColor(): string {
     if (this.overCharLimit) return '#d32f2f';       // red
     if (this.charPercent >= 90) return '#ed6c02';   // orange near limit
-    return '#64748b';                                // neutral
+    return '#64748b';                               // neutral
   }
-
 }
+
