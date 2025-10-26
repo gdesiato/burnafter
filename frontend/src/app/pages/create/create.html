@@ -4,21 +4,17 @@
 
     <form (ngSubmit)="submit()">
       <p>
-        <label>Content<br>
-          <textarea [(ngModel)]="text" name="text" rows="12" required></textarea>
-        </label>
+        <p>
+          <label>Content</label>
+          <div class="textarea-wrapper">
+            <textarea [(ngModel)]="text" name="text" rows="14" required></textarea>
         
-        <!-- char counter -->
-        <div class="counter" [style.color]="counterColor" aria-live="polite">
-          {{ charCount | number }} / {{ maxChars | number }}
-          <span class="muted">chars</span>
-        </div>
-        
-        <div class="counter-bar">
-          <div class="counter-bar__fill"
-               [style.width.%]="charPercent"
-               [style.background]="counterColor"></div>
-        </div>
+            <!-- counter INSIDE the textarea corner -->
+            <div class="counter" [style.color]="counterColor" aria-live="polite">
+              {{ charCount | number }} / {{ maxChars | number }} <span class="muted">chars</span>
+            </div>
+          </div>
+        </p>
         
         <!-- disable submit if too long -->
         <button type="submit" [disabled]="loading || !text.trim() || overCharLimit">create</button>

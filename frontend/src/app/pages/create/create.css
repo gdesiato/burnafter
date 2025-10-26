@@ -108,88 +108,68 @@ input[readonly] { background: #f9f9f9; }
   font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace;
 }
 
-/* ===== Character counter styles (outside version, if ever used) ===== */
-.counter {
-  font-size: 0.9rem;
-  margin-top: 4px;
-}
-.counter .muted {
-  color: #94a3b8; /* slate-400 */
-  margin-left: 6px;
-  font-size: 0.85em;
-}
-.counter-bar {
-  position: relative;
-  height: 4px;
-  background: #e2e8f0; /* slate-200 */
-  border-radius: 999px;
-  margin-top: 6px;
-  overflow: hidden;
-}
-.counter-bar__fill {
-  height: 100%;
-  width: 0%;
-  border-radius: 999px;
-  transition: width 120ms linear;
-}
-
-/* ===== Textarea wrapper with in-corner counter ===== */
+/* =========================================================
+   Textarea wrapper with IN-CORNER counter (replacement)
+   ========================================================= */
 .textarea-wrapper {
-  --counter-h: 18px;
-  --counter-pad: 10px;
+  --counter-h: 18px;     /* approx counter height */
+  --counter-pad: 10px;   /* gap from edges */
   position: relative;
   display: block;
   width: 100%;
 }
 
-/* IMPORTANT: responsive textarea (no fixed min-width), leave space for counter */
+/* Big, responsive textarea with space for the counter */
 .textarea-wrapper > textarea {
   width: 100%;
   max-width: 100%;
-  min-width: 0;                          /* allow shrinking on small screens */
+  min-width: 0;
   box-sizing: border-box;
-  line-height: 1.4;
-  padding: 12px 12px calc(var(--counter-h) + var(--counter-pad) + 6px) 12px;
-  resize: vertical;                       /* vertical-only; avoids horizontal handle */
-  min-height: 120px;
+  line-height: 1.45;
+  min-height: 260px;  /* larger by default */
+  padding: 12px 12px calc(var(--counter-h) + var(--counter-pad) + 10px) 12px; /* leave bottom space */
+  resize: vertical;
 }
 
-/* Counter inside the bottom-right corner */
+/* Counter INSIDE bottom-right corner */
 .textarea-wrapper .counter {
   position: absolute;
   right: var(--counter-pad);
   bottom: var(--counter-pad);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: #6b7280;
-  pointer-events: none;                   /* don’t block caret clicks */
-  background: rgba(255, 255, 255, 0.8);   /* readable over text */
-  padding: 1px 4px;
+  pointer-events: none;
+  background: rgba(255, 255, 255, 0.85); /* readable over text */
+  padding: 1px 6px;
   border-radius: 4px;
+  margin: 0;
 }
 
 .textarea-wrapper .counter .muted {
   opacity: 0.7;
-  font-size: 0.75rem;
+  font-size: 0.75em;
 }
 
-/* ===== Responsive ===== */
+/* Mobile tweaks */
 @media (max-width: 600px) {
   .container { padding: 12px; }
 
   .textarea-wrapper > textarea {
     font-size: 0.95rem;
-    min-height: 160px; /* a bit shorter on phones */
-    padding-bottom: calc(var(--counter-h) + var(--counter-pad) + 8px);
+    min-height: 200px;  /* comfortable on phones */
+    padding-bottom: calc(var(--counter-h) + var(--counter-pad) + 12px);
   }
 
   .textarea-wrapper .counter {
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     right: 8px;
     bottom: 6px;
   }
 }
 
-/* Result container */
+/* =========================================================
+   Result (link + copy button)
+   ========================================================= */
 .result-block {
   margin-top: 12px;
 }
@@ -202,17 +182,21 @@ input[readonly] { background: #f9f9f9; }
   padding: 6px 8px;
   border: 1px solid var(--line, #000);
   background: #f9f9f9;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
+/* Copy button styled like other buttons */
 .copy-btn {
   margin-top: 8px;
   font-family: inherit;
   font-size: inherit;
   border: 1px solid var(--line, #000);
-  background: #eee;                 /* match the global button background */
+  background: #eee;
   color: var(--fg, #000);
-  padding: 4px 6px;                 /* same padding */
-  -webkit-appearance: none;         /* match your global controls */
+  padding: 4px 6px;
+  -webkit-appearance: none;
   appearance: none;
   cursor: pointer;
 }
@@ -226,18 +210,13 @@ input[readonly] { background: #f9f9f9; }
   color: #16a34a;
 }
 
-/* the checkmark only exists when copied (via *ngIf), keep subtle anim if you want */
-.copy-btn .check {
-  margin-left: 4px;
-}
-
-
+.copy-btn .check { margin-left: 4px; }
 
 /* Toast message */
 .toast {
   position: fixed;
   right: 16px;
-  bottom: 16px;
+  bottom: max(16px, env(safe-area-inset-bottom));
   background: rgba(0,0,0,0.85);
   color: #fff;
   padding: 8px 12px;
@@ -254,4 +233,3 @@ input[readonly] { background: #f9f9f9; }
 @keyframes toast-out {
   to { opacity: 0; transform: translateY(8px); }
 }
-
