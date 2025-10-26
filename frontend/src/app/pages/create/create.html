@@ -3,25 +3,13 @@
     <h1>Create Message</h1>
 
     <form (ngSubmit)="submit()">
-      <p>
-        <p>
-          <label>Content</label>
-          <div class="textarea-wrapper">
-            <textarea [(ngModel)]="text" name="text" rows="14" required></textarea>
-        
-            <!-- counter INSIDE the textarea corner -->
-            <div class="counter" [style.color]="counterColor" aria-live="polite">
-              {{ charCount | number }} / {{ maxChars | number }} <span class="muted">chars</span>
-            </div>
-          </div>
-        </p>
-        
-        <!-- disable submit if too long -->
-        <button type="submit" [disabled]="loading || !text.trim() || overCharLimit">create</button>
-        
-        <div class="error" *ngIf="overCharLimit">
-          Paste too long. Reduce by {{ charCount - maxChars }} characters.
+      <p><label>Content</label></p>
+      <div class="textarea-wrapper">
+        <textarea [(ngModel)]="text" name="text" rows="14" required></textarea>
+        <div class="counter" [style.color]="counterColor" aria-live="polite">
+          {{ charCount | number }} / {{ maxChars | number }} <span class="muted">chars</span>
         </div>
+      </div>
 
       <p>
         <label>Expires<br>
@@ -49,22 +37,22 @@
         </label>
       </p>
 
-      <p class="hint">
-        no password ⇒ the link is the key. keep it safe.
-      </p>
+      <p class="hint">no password ⇒ the link is the key. keep it safe.</p>
 
-      <p>
-        <button type="submit" [disabled]="loading || !text.trim()">create</button>
-      </p>
+      <button type="submit" [disabled]="loading || !text.trim() || overCharLimit">create</button>
+
+      <div class="error" *ngIf="overCharLimit">
+        Paste too long. Reduce by {{ charCount - maxChars }} characters.
+      </div>
 
       @if (error) {
         <div class="error">error: {{ error }}</div>
       }
 
       @if (resultUrl) {
-        <div>
+        <div class="result-block">
           <input [value]="resultUrl" readonly>
-          <p><button type="button" (click)="copy()">copy</button></p>
+          <p><button type="button" class="copy-btn" (click)="copy()">copy</button></p>
         </div>
       }
     </form>
