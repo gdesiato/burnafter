@@ -206,43 +206,29 @@ input[readonly] { background: #f9f9f9; }
 
 .copy-btn {
   margin-top: 8px;
-  display: inline-block;
   font-family: inherit;
   font-size: inherit;
   border: 1px solid var(--line, #000);
-  background: #fff;              /* same as create */
+  background: #eee;                 /* match the global button background */
   color: var(--fg, #000);
-  padding: 4px 6px;              /* identical padding */
-  -webkit-appearance: none;
+  padding: 4px 6px;                 /* same padding */
+  -webkit-appearance: none;         /* match your global controls */
   appearance: none;
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease, border 120ms ease;
 }
 
-.copy-btn:hover {
-  background: #f5f5f5;           /* subtle hover like create might get */
-}
+.copy-btn:active { background: #e5e5e5; }
 
-.copy-btn:active {
-  background: #e2e2e2;           /* subtle press feedback */
-}
-
+/* success state */
 .copy-btn.copied {
-  background: #e7f9ef;           /* green success highlight */
+  background: #e7f9ef;
   border-color: #22c55e;
   color: #16a34a;
 }
 
+/* the checkmark only exists when copied (via *ngIf), keep subtle anim if you want */
 .copy-btn .check {
   margin-left: 4px;
-  opacity: 0;
-  transform: scale(0.7);
-  transition: opacity 150ms ease, transform 150ms ease;
-}
-
-.copy-btn.copied .check {
-  opacity: 1;
-  transform: scale(1);
 }
 
 

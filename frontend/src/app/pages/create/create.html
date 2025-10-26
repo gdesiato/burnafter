@@ -42,7 +42,6 @@
         no password ⇒ the link is the key. keep it safe.
       </p>
 
-      <!-- disable submit if too long -->
       <button type="submit" [disabled]="loading || !text.trim() || overCharLimit">create</button>
 
       <div class="error" *ngIf="overCharLimit">
@@ -53,32 +52,27 @@
         <div class="error">error: {{ error }}</div>
       }
 
-      <!-- RESULT SECTION -->
       @if (resultUrl) {
         <div class="result-block">
-          <input #resultInput [value]="resultUrl" readonly>
-      
+          <input #resultInput [value]="resultUrl" readonly aria-label="shareable link">
+
           <p>
-            <button type="button"
-                    class="copy-btn"
-                    (click)="copy()"
-                    [class.copied]="copied"
-                    aria-live="polite"
-                    [attr.aria-label]="copied ? 'Copied!' : 'Copy link'">
-              <span class="label">{{ copied ? 'Copied!' : 'Copy' }}</span>
-              <svg class="check" viewBox="0 0 24 24" width="16" height="16">
-                <path d="M20 6L9 17l-5-5"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="3"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"/>
+            <button
+              type="button"
+              class="copy-btn"
+              (click)="copy()"
+              [class.copied]="copied"
+              aria-live="polite"
+              [attr.aria-label]="copied ? 'copied!' : 'copy link'">
+              <span class="label">{{ copied ? 'copied!' : 'copy' }}</span>
+              <svg *ngIf="copied" class="check" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" stroke-width="3"
+                      stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </button>
           </p>
         </div>
-      
-        <!-- Optional toast -->
+
         <div class="toast" *ngIf="copied" role="status">Link copied</div>
       }
     </form>
