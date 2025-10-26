@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: frontend   # all "run:" steps happen in frontend/
     steps:
       - uses: actions/checkout@v4
 
@@ -33,16 +33,18 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Build Angular (prod, correct base)
+      - name: Build Angular (prod with correct base)
         run: |
-          npx ng build --configuration production --base-href=/burnafter/ --deploy-url=/burnafter/
-          # SPA fallback
+          npx ng build --configuration production \
+            --base-href=/burnafter/ \
+            --deploy-url=/burnafter/
+          # SPA fallback for 404s on deep links
           cp dist/burnafter-ui/browser/index.html dist/burnafter-ui/browser/404.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # MUST point to the folder that contains index.html
+          # path is repo-root relative for this "uses:" step
           path: frontend/dist/burnafter-ui/browser
 
   deploy:
@@ -54,3 +56,4 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
