@@ -3,7 +3,6 @@ package com.burnafter.burnafter.dtos;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.*;
 
-// Allow extra fields like "kind" without failing
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CreatePasteRequest {
 
@@ -13,13 +12,12 @@ public class CreatePasteRequest {
 
     // ---- MODE B: encrypted (ZK) ----
     // Base64(GCM ciphertext) + Base64(12-byte IV)
-    @Size(max = 400_000) // adjust as needed
+    @Size(max = 400_000)
     public String ciphertext;
 
     @Size(max = 256)
     public String iv;
 
-    // ---- Common fields ----
     @NotBlank
     @Size(max = 20)               // "10min","1h","24h","7d", etc.
     public String expiresIn = "24h";

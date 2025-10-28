@@ -1,0 +1,10 @@
+spring:
+  data:
+    redis:
+      url: ${REDIS_URL}
+      ssl: true
+
+app:
+  publicReadBase: ${PUBLIC_READ_BASE:https://gdesiato.github.io/burnafter}
+server:
+  forward-headers-strategy: framework
