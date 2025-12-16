@@ -47,7 +47,7 @@ public class PasteController {
                 .body(meta);
     }
 
-    // === Hardened: never leak if a paste exists or not ===
+    // Hardened: never leak if a paste exists or not
     // Accept String so a malformed UUID does NOT cause 400 (which would leak).
     @GetMapping("/{id}/data")
     public ResponseEntity<ReadPasteResponse> data(@PathVariable String id) {
@@ -56,7 +56,7 @@ public class PasteController {
         ReadPasteResponse body;
         try {
             UUID uuid = UUID.fromString(id);
-            var data = service.data(uuid); // null => not found / expired / already read
+            var data = service.data(uuid); // null -> not found / expired / already read
             if (data != null) {
                 body = new ReadPasteResponse(
                         true,
@@ -69,7 +69,7 @@ public class PasteController {
                 body = new ReadPasteResponse(false, null, null, null, randomPad(256, 768));
             }
         } catch (Exception any) {
-            // Malformed id or any other error → same generic response
+            // Malformed id or any other error -> same generic response
             body = new ReadPasteResponse(false, null, null, null, randomPad(256, 768));
         }
 
@@ -106,7 +106,7 @@ public class PasteController {
                 .toUriString();
     }
 
-    // --- Side-channel mitigations ---
+    // Side-channel mitigations
     private static void sleepUntilAtLeast(long startNanos, int minMs, int maxMs) {
         int targetMs = minMs + RNG.nextInt(Math.max(1, maxMs - minMs));
         long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
@@ -128,5 +128,3 @@ public class PasteController {
         return sb.toString();
     }
 }
-
-
