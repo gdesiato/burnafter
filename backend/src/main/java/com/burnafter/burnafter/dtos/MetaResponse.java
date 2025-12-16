@@ -2,4 +2,8 @@ package com.burnafter.burnafter.dtos;
 
 import java.time.Instant;
 
-public record MetaResponse(String kind, Instant expiresAt, int remaining, boolean protectedByPassword) {}
+public record MetaResponse(
+        String kind,
+        Instant expireAt,
+        int viewsLeft
+) {}

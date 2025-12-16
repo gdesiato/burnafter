@@ -5,14 +5,13 @@ import com.burnafter.burnafter.model.Paste;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class PasteService {
+
     private final Map<UUID, Paste> store = new ConcurrentHashMap<>();
 
     @Value("${app.maxTextBytes:20000}")     int maxTextBytes;
@@ -21,103 +20,108 @@ public class PasteService {
     @Value("${app.publicBaseUrl:}")         private String publicBaseUrl;
 
     public CreatePasteResponse create(CreatePasteRequest req, String baseUrl) {
-        if (!"TEXT".equalsIgnoreCase(req.kind)) throw new IllegalArgumentException("Only TEXT supported");
+        if (!"TEXT".equalsIgnoreCase(req.kind))
+            throw new IllegalArgumentException("Only TEXT supported");
 
         int views = Math.max(1, Math.min(10, req.views));
         Duration ttl = clampTtl(parseTtl(req.expiresIn));
         UUID id = UUID.randomUUID();
         Instant now = Instant.now();
 
-        String hash = null;
-        boolean hasPwd = req.password != null && !req.password.isBlank();
-        if (hasPwd) hash = sha256b64(req.password);
+        // Strict ZK validation
+        if (!isB64(req.ciphertext) || !isB64(req.iv))
+            throw new IllegalArgumentException("Invalid base64 encoding");
 
-        Paste p;
+        byte[] ivBytes = Base64.getDecoder().decode(req.iv);
+        if (ivBytes.length != 12)
+            throw new IllegalArgumentException("IV must be 12 bytes for AES-GCM");
 
-        if (req.isEncrypted()) {
-            // guards for encrypted payloads only
-            if (req.ciphertext == null || req.iv == null) {
-                throw new IllegalArgumentException("Missing ciphertext/iv");
-            }
-            if (!isB64(req.ciphertext) || !isB64(req.iv)) {
-                throw new IllegalArgumentException("Invalid base64 encoding");
-            }
-            if (Base64.getDecoder().decode(req.iv).length != 12) {
-                throw new IllegalArgumentException("IV must be 12 bytes for AES-GCM");
-            }
-            if (Base64.getDecoder().decode(req.ciphertext).length > maxTextBytes * 4) {
-                throw new IllegalArgumentException("Ciphertext too large");
-            }
+        if (Base64.getDecoder().decode(req.ciphertext).length > maxTextBytes * 4)
+            throw new IllegalArgumentException("Ciphertext too large");
 
-            // ZK mode: NEVER store plaintext
-            p = new Paste(
-                    id, Paste.Kind.TEXT,
-                    null,
-                    now, now.plus(ttl),
-                    views,
-                    req.burnAfterRead,
-                    false,
-                    null
-            );
-            p.setEncrypted(true);
-            p.setCiphertext(req.ciphertext);
-            p.setIv(req.iv);
-
-        } else if (req.isPlaintext()) {
-            var bytes = req.content.getBytes(StandardCharsets.UTF_8);
-            if (bytes.length > maxTextBytes) throw new IllegalArgumentException("Content too large");
-
-            p = new Paste(
-                    id, Paste.Kind.TEXT,
-                    req.content,
-                    now, now.plus(ttl),
-                    views,
-                    req.burnAfterRead,
-                    hasPwd,
-                    hash
-            );
-        } else {
-            throw new IllegalArgumentException("Provide either content or ciphertext+iv");
-        }
+        Paste p = new Paste(
+                id,
+                Paste.Kind.TEXT,
+                req.ciphertext,
+                req.iv,
+                now,
+                now.plus(ttl),
+                views,
+                req.burnAfterRead
+        );
 
         store.put(id, p);
-        String readBase = (publicBaseUrl != null && !publicBaseUrl.isBlank()) ? publicBaseUrl : baseUrl;
-        return new CreatePasteResponse(id.toString(), readBase + "/p/" + id, p.getExpireAt(), p.getViewsLeft());
+
+        String readBase = (publicBaseUrl != null && !publicBaseUrl.isBlank())
+                ? publicBaseUrl
+                : baseUrl;
+
+        return new CreatePasteResponse(
+                id.toString(),
+                readBase + "/p/" + id,
+                p.getExpireAt(),
+                p.getViewsLeft()
+        );
     }
 
-    private Duration clampTtl(Duration ttl) {
-        var maxTtl = Duration.ofMinutes(maxTtlMinutes);
-        if (ttl.compareTo(maxTtl) > 0) ttl = maxTtl;
-        if (ttl.isZero() || ttl.isNegative()) ttl = Duration.ofMinutes(defaultTtlMinutes);
-        return ttl;
-    }
-
-    private static String sha256b64(String s) {
-        try {
-            var md = MessageDigest.getInstance("SHA-256");
-            return Base64.getEncoder().encodeToString(md.digest(s.getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception e) { throw new RuntimeException(e); }
-    }
-
+    // Read-once encrypted data
     public DataResponse data(UUID id) {
-        var p = store.get(id);
-        if (p == null || expired(p)) { store.remove(id); return null; }
-        if (!p.isEncrypted()) return null; // only for ZK records
+        Paste p = store.get(id);
+        if (p == null || expired(p)) {
+            store.remove(id);
+            return null;
+        }
+        p.consumeView();
 
-        // Decrement views
-        int remaining = Math.max(0, p.getViewsLeft() - 1);
-        p.setViewsLeft(remaining);
-        if (p.isBurnAfterRead() || remaining <= 0) store.remove(id);
-
+        if (p.isBurnAfterRead() || p.isDepleted()) {
+            store.remove(id);
+        }
         return new DataResponse(p.getIv(), p.getCiphertext());
+    }
+
+    // Metadata
+    public MetaResponse meta(UUID id) {
+        Paste p = store.get(id);
+        if (p == null || expired(p)) {
+            store.remove(id);
+            return null;
+        }
+
+        // ZK invariant: never password-protected
+        return new MetaResponse(
+                p.getKind().name(),
+                p.getExpireAt(),
+                p.getViewsLeft()
+        );
+    }
+
+    public int purgeExpired() {
+        int removed = 0;
+        for (Iterator<Map.Entry<UUID, Paste>> it = store.entrySet().iterator(); it.hasNext();) {
+            if (expired(it.next().getValue())) {
+                it.remove();
+                removed++;
+            }
+        }
+        return removed;
     }
 
     private boolean expired(Paste p) {
         return Instant.now().isAfter(p.getExpireAt());
     }
 
+    private Duration clampTtl(Duration ttl) {
+        Duration maxTtl = Duration.ofMinutes(maxTtlMinutes);
+        if (ttl.compareTo(maxTtl) > 0) ttl = maxTtl;
+        if (ttl.isZero() || ttl.isNegative())
+            ttl = Duration.ofMinutes(defaultTtlMinutes);
+        return ttl;
+    }
+
     private Duration parseTtl(String s) {
-        if (s == null || s.isBlank()) return Duration.ofMinutes(defaultTtlMinutes);
+        if (s == null || s.isBlank())
+            return Duration.ofMinutes(defaultTtlMinutes);
+
         s = s.trim().toLowerCase(Locale.ROOT);
         try {
             if (s.endsWith("min")) return Duration.ofMinutes(Long.parseLong(s.replace("min","")));
@@ -129,65 +133,12 @@ public class PasteService {
         }
     }
 
-    public int purgeExpired() {
-        int removed = 0;
-        for (Iterator<Map.Entry<UUID, Paste>> it = store.entrySet().iterator(); it.hasNext();) {
-            var entry = it.next();
-            if (expired(entry.getValue())) {
-                it.remove();
-                removed++;
-            }
-        }
-        return removed;
-    }
-
-    public MetaResponse meta(UUID id) {
-        var p = store.get(id);
-        if (p == null || expired(p)) { store.remove(id); return null; }
-
-        // For encrypted pastes, protectedByPassword is always false (link-key mode).
-        boolean protectedByPassword = !p.isEncrypted() && p.isHasPassword();
-
-        return new MetaResponse(
-                p.getKind().name(),
-                p.getExpireAt(),
-                p.getViewsLeft(),
-                protectedByPassword
-        );
-    }
-
-    /**
-     * Legacy plaintext open: returns plaintext content and decrements views.
-     * For encrypted (ZK) pastes, this returns null (controller will send 404).
-     * Frontend must use GET /api/pastes/{id}/data for ZK.
-     */
-    public OpenResponse open(UUID id, OpenRequest req) {
-        var p = store.get(id);
-        if (p == null || expired(p)) { store.remove(id); return null; }
-
-        // Encrypted pastes are not opened via this path
-        if (p.isEncrypted()) return null;
-
-        if (p.isHasPassword()) {
-            var given = (req == null) ? null : req.password();
-            if (given == null || given.isBlank()) throw new SecurityException("Password required");
-            if (!Objects.equals(p.getPasswordHash(), sha256b64(given))) throw new SecurityException("Invalid password");
-        }
-
-        int remaining = Math.max(0, p.getViewsLeft() - 1);
-        p.setViewsLeft(remaining);
-        if (p.isBurnAfterRead() || remaining <= 0) store.remove(id);
-
-        return new OpenResponse(p.getKind().name(), p.getContentText(), remaining);
-    }
-
     private static boolean isB64(String s) {
         try {
             Base64.getDecoder().decode(s);
-            return true;           // valid
+            return true;
         } catch (Exception e) {
-            return false;          // invalid
+            return false;
         }
     }
-
 }

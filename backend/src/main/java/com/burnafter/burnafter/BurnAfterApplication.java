@@ -6,10 +6,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-public class BurnafterApplication {
+public class BurnAfterApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(BurnafterApplication.class, args);
+		SpringApplication.run(BurnAfterApplication.class, args);
 	}
 
 }

@@ -11,7 +11,6 @@ import java.net.URI;
 import java.util.UUID;
 
 import org.springframework.http.CacheControl;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.security.SecureRandom;
@@ -54,23 +53,25 @@ public class PasteController {
         long start = System.nanoTime();
 
         ReadPasteResponse body;
+
         try {
             UUID uuid = UUID.fromString(id);
-            var data = service.data(uuid); // null -> not found / expired / already read
-            if (data != null) {
+            var payload = service.data(uuid); // null -> not found / expired / already read
+
+            if (payload != null) {
                 body = new ReadPasteResponse(
                         true,
-                        data.iv(),
-                        data.ciphertext(),
-                        null,  // keep the field but don’t reveal counts
+                        payload.iv(),
+                        payload.ciphertext(),
                         randomPad(256, 768)
                 );
             } else {
-                body = new ReadPasteResponse(false, null, null, null, randomPad(256, 768));
+                body = emptyReadResponse();
             }
-        } catch (Exception any) {
-            // Malformed id or any other error -> same generic response
-            body = new ReadPasteResponse(false, null, null, null, randomPad(256, 768));
+
+        } catch (Exception ignored) {
+            // Malformed UUID or any other error -> indistinguishable response
+            body = emptyReadResponse();
         }
 
         // Add small randomized delay to reduce timing probes
@@ -83,19 +84,13 @@ public class PasteController {
                 .body(body);
     }
 
-    @PostMapping("/{id}/open")
-    public ResponseEntity<OpenResponse> open(@PathVariable UUID id,
-                                             @RequestBody(required = false) OpenRequest req) {
-        try {
-            var out = service.open(id, req);
-            if (out == null) return ResponseEntity.notFound().build();
-            return ResponseEntity.ok()
-                    .cacheControl(CacheControl.noStore())
-                    .header("Pragma", "no-cache")
-                    .body(out);
-        } catch (SecurityException se) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+    private static ReadPasteResponse emptyReadResponse() {
+        return new ReadPasteResponse(
+                false,
+                null,
+                null,
+                randomPad(256, 768)
+        );
     }
 
     private static String externalBaseUrl(HttpServletRequest req) {
