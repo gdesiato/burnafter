@@ -67,7 +67,7 @@ export class CreateComponent {
         burnAfterRead: this.burnAfterRead
       }).subscribe({
         next: (r: CreateResponse) => {
-          this.resultUrl = r.readUrl;
+          this.resultUrl = `${r.readUrl}#${fragment}`;
           this.loading = false;
         },
         error: (err: unknown) => {
