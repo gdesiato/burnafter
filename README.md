@@ -16,3 +16,4 @@ Because of this, the backend may **take a few seconds to respond on the first re
 This is expected behavior on free-tier infrastructure.  
 Once the service wakes up, subsequent requests are fast and responsive.
 
+~
