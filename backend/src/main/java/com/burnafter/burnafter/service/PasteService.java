@@ -1,6 +1,7 @@
 package com.burnafter.burnafter.service;
 
 import com.burnafter.burnafter.dtos.*;
+import com.burnafter.burnafter.exception.InvalidPasteException;
 import com.burnafter.burnafter.model.Paste;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,14 +31,14 @@ public class PasteService {
 
         // Strict ZK validation
         if (!isB64(req.ciphertext) || !isB64(req.iv))
-            throw new IllegalArgumentException("Invalid base64 encoding");
+            throw new InvalidPasteException("Invalid base64 encoding");
 
         byte[] ivBytes = Base64.getDecoder().decode(req.iv);
         if (ivBytes.length != 12)
-            throw new IllegalArgumentException("IV must be 12 bytes for AES-GCM");
+            throw new InvalidPasteException("IV must be 12 bytes for AES-GCM");
 
         if (Base64.getDecoder().decode(req.ciphertext).length > maxTextBytes * 4)
-            throw new IllegalArgumentException("Ciphertext too large");
+            throw new InvalidPasteException("Ciphertext too large");
 
         Paste p = new Paste(
                 id,
