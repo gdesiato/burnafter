@@ -2,6 +2,8 @@ package com.burnafter.burnafter.service;
 
 import com.burnafter.burnafter.dtos.*;
 import com.burnafter.burnafter.exception.InvalidPasteException;
+import com.burnafter.burnafter.exception.InvalidPasteReason;
+import com.burnafter.burnafter.exception.PasteNotFoundException;
 import com.burnafter.burnafter.model.Paste;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -22,7 +24,7 @@ public class PasteService {
 
     public CreatePasteResponse create(CreatePasteRequest req, String baseUrl) {
         if (!"TEXT".equalsIgnoreCase(req.kind))
-            throw new IllegalArgumentException("Only TEXT supported");
+            throw new InvalidPasteException(InvalidPasteReason.ONLY_TEXT_SUPPORTED);
 
         int views = Math.max(1, Math.min(10, req.views));
         Duration ttl = clampTtl(parseTtl(req.expiresIn));
@@ -31,14 +33,14 @@ public class PasteService {
 
         // Strict ZK validation
         if (!isB64(req.ciphertext) || !isB64(req.iv))
-            throw new InvalidPasteException("Invalid base64 encoding");
+            throw new InvalidPasteException(InvalidPasteReason.INVALID_BASE64);
 
         byte[] ivBytes = Base64.getDecoder().decode(req.iv);
         if (ivBytes.length != 12)
-            throw new InvalidPasteException("IV must be 12 bytes for AES-GCM");
+            throw new InvalidPasteException(InvalidPasteReason.INVALID_IV_LENGTH);
 
         if (Base64.getDecoder().decode(req.ciphertext).length > maxTextBytes * 4)
-            throw new InvalidPasteException("Ciphertext too large");
+            throw new InvalidPasteException(InvalidPasteReason.CIPHERTEXT_TOO_LARGE);
 
         Paste p = new Paste(
                 id,
@@ -70,7 +72,7 @@ public class PasteService {
         Paste p = store.get(id);
         if (p == null || expired(p)) {
             store.remove(id);
-            return null;
+            throw new PasteNotFoundException();
         }
         p.consumeView();
 

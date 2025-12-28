@@ -1,12 +1,14 @@
 package com.burnafter.burnafter.exception;
 
 public class InvalidPasteException extends RuntimeException {
+    private final InvalidPasteReason reason;
 
-    public InvalidPasteException(String message) {
-        super(message);
+    public InvalidPasteException(InvalidPasteReason reason) {
+        this.reason = reason;
     }
 
-    public InvalidPasteException(String message, Throwable cause) {
-        super(message, cause);
+    public InvalidPasteReason getReason() {
+        return reason;
     }
 }
+
