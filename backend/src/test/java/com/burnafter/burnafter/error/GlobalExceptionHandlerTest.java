@@ -38,7 +38,7 @@ class GlobalExceptionHandlerTest {
                         .content("""
                 {
                   "kind": "TEXT",
-                  "ciphertext": "YQ==",
+                  "ciphertext": "YQ=!",
                   "iv": "AAAAAAAAAAAA",
                   "views": 1
                 }
@@ -58,7 +58,7 @@ class GlobalExceptionHandlerTest {
                         .content("""
                 {
                   "kind": "TEXT",
-                  "ciphertext": "YQ==",
+                  "ciphertext": "YQ=!",
                   "iv": "AAAAAAAAAAAA",
                   "views": 1
                 }
