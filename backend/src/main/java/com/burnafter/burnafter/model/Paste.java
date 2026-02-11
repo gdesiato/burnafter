@@ -1,28 +1,15 @@
 package com.burnafter.burnafter.model;
 
+import jakarta.persistence.*;
+
 import java.time.Instant;
 import java.util.UUID;
 
+@Entity
+@Table(name = "pastes")
 public class Paste {
 
-    public enum Kind { TEXT }
-
-    private final UUID id;
-    private final Kind kind;
-
-    // Zero-knowledge encrypted payload (server never sees plaintext)
-    // Base64-encoded AES-GCM ciphertext and 12-byte IV
-    private final String ciphertext;
-    private final String iv;
-
-    private final Instant createdAt;
-    private final Instant expireAt;
-
-    private int viewsLeft;
-    private final boolean burnAfterRead;
-
     public Paste(
-            UUID id,
             Kind kind,
             String ciphertext,
             String iv,
@@ -31,7 +18,6 @@ public class Paste {
             int viewsLeft,
             boolean burnAfterRead
     ) {
-        this.id = id;
         this.kind = kind;
         this.ciphertext = ciphertext;
         this.iv = iv;
@@ -41,9 +27,37 @@ public class Paste {
         this.burnAfterRead = burnAfterRead;
     }
 
-    public UUID getId() {
-        return id;
-    }
+    public enum Kind { TEXT }
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Kind kind;
+
+    @Column(nullable = false, length = 100000)
+    private String ciphertext;
+
+    @Column(nullable = false)
+    private String iv;
+
+    @Column(nullable = false)
+    private Instant createdAt;
+
+    @Column(nullable = false)
+    private Instant expireAt;
+
+    private int viewsLeft;
+
+    @Column(nullable = false)
+    private boolean burnAfterRead;
+
+    @Version
+    private Long version;
+
+    public Paste() {} // required by JPA
 
     public Kind getKind() {
         return kind;
@@ -92,5 +106,12 @@ public class Paste {
     public boolean isDepleted() {
         return viewsLeft <= 0;
     }
-}
 
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+}
