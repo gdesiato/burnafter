@@ -102,7 +102,7 @@ public class PasteService {
     @Transactional
     public int purgeExpired() {
 
-        List<Paste> expired = repository.findByExpiresAtBefore(Instant.now());
+        List<Paste> expired = repository.findByExpireAtBefore(Instant.now());
         repository.deleteAll(expired);
         return expired.size();
     }

@@ -9,6 +9,43 @@ import java.util.UUID;
 @Table(name = "pastes")
 public class Paste {
 
+    public enum Kind { TEXT }
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 50)
+    private Kind kind;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String ciphertext;
+
+    @Column(nullable = false, length = 255)
+    private String iv;
+
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+
+    @Column(name = "expire_at", nullable = false)
+    private Instant expireAt;
+
+    @Column(name = "views_left")
+    private int viewsLeft;
+
+    @Column(name = "burn_after_read", nullable = false)
+    private boolean burnAfterRead;
+
+    @Version
+    private Long version;
+
+    // --- Constructors ---
+
+    protected Paste() {
+        // required by JPA
+    }
+
     public Paste(
             Kind kind,
             String ciphertext,
@@ -27,76 +64,23 @@ public class Paste {
         this.burnAfterRead = burnAfterRead;
     }
 
-    public enum Kind { TEXT }
+    // --- Getters ---
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    public UUID getId() { return id; }
+    public Kind getKind() { return kind; }
+    public String getCiphertext() { return ciphertext; }
+    public String getIv() { return iv; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getExpireAt() { return expireAt; }
+    public int getViewsLeft() { return viewsLeft; }
+    public boolean isBurnAfterRead() { return burnAfterRead; }
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Kind kind;
-
-    @Column(nullable = false, length = 100000)
-    private String ciphertext;
-
-    @Column(nullable = false)
-    private String iv;
-
-    @Column(nullable = false)
-    private Instant createdAt;
-
-    @Column(nullable = false)
-    private Instant expireAt;
-
-    private int viewsLeft;
-
-    @Column(nullable = false)
-    private boolean burnAfterRead;
-
-    @Version
-    private Long version;
-
-    public Paste() {} // required by JPA
-
-    public Kind getKind() {
-        return kind;
-    }
-
-    public String getCiphertext() {
-        return ciphertext;
-    }
-
-    public String getIv() {
-        return iv;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public Instant getExpireAt() {
-        return expireAt;
-    }
-
-    public int getViewsLeft() {
-        return viewsLeft;
-    }
-
-    public boolean isBurnAfterRead() {
-        return burnAfterRead;
-    }
-
-    // --- Domain logic ---
+    // --- Domain Logic ---
 
     public boolean isExpired() {
         return expireAt != null && Instant.now().isAfter(expireAt);
     }
 
-    /**
-     * Consume one view.
-     * Caller is responsible for persisting the change.
-     */
     public void consumeView() {
         if (viewsLeft > 0) {
             viewsLeft--;
@@ -105,13 +89,5 @@ public class Paste {
 
     public boolean isDepleted() {
         return viewsLeft <= 0;
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
     }
 }

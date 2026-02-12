@@ -10,5 +10,5 @@ import java.util.UUID;
 
 @Repository
 public interface PasteRepository extends JpaRepository<Paste, UUID> {
-    List<Paste> findByExpiresAtBefore(Instant now);
+    List<Paste> findByExpireAtBefore(Instant now);
 }

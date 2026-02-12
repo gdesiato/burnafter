@@ -1,20 +1,26 @@
 # ---------- 1) Build stage ----------
-FROM eclipse-temurin:23-jdk AS build
+FROM eclipse-temurin:21-jdk AS build
 WORKDIR /src
 
-# copy only wrapper + pom first to leverage cache
 COPY mvnw ./
 COPY .mvn .mvn
 COPY pom.xml ./
-RUN chmod +x mvnw && ./mvnw -q -DskipTests dependency:go-offline
 
-# now copy sources and build
+# Use Docker layer cache for Maven repo
+RUN chmod +x mvnw && ./mvnw -B -DskipTests dependency:go-offline
+
 COPY src ./src
-RUN ./mvnw -q -DskipTests package
+RUN ./mvnw -B -DskipTests package
 
 # ---------- 2) Runtime stage ----------
-FROM eclipse-temurin:23-jre
+FROM eclipse-temurin:21-jre
 WORKDIR /app
+
 COPY --from=build /src/target/*.jar app.jar
-# Render provides $PORT; pass it to Spring Boot
-CMD ["sh","-c","java -Dserver.port=$PORT -jar /app/app.jar"]
+
+RUN addgroup --system spring && adduser --system spring --ingroup spring
+USER spring:spring
+
+EXPOSE 8080
+
+ENTRYPOINT ["sh","-c","java -Dserver.port=${PORT:-8080} -jar /app/app.jar"]
