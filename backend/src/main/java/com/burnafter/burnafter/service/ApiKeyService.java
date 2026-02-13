@@ -3,6 +3,7 @@ package com.burnafter.burnafter.service;
 import com.burnafter.burnafter.model.ApiKey;
 import com.burnafter.burnafter.repository.ApiKeyRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -15,10 +16,10 @@ public class ApiKeyService {
     private static final int PREFIX_LENGTH = 12;
 
     private final ApiKeyRepository repository;
-    private final BCryptPasswordEncoder encoder;
+    private final PasswordEncoder encoder;
 
     public ApiKeyService(ApiKeyRepository repository,
-                         BCryptPasswordEncoder encoder) {
+                         PasswordEncoder encoder) {
         this.repository = repository;
         this.encoder = encoder;
     }
@@ -60,19 +61,8 @@ public class ApiKeyService {
 
         String prefix = incomingKey.substring(0, PREFIX_LENGTH);
 
-        Optional<ApiKey> stored = repository.findByPrefixAndEnabledTrue(prefix);
-
-        if (stored.isEmpty()) {
-            return Optional.empty();
-        }
-
-        ApiKey apiKey = stored.get();
-
-        if (encoder.matches(incomingKey, apiKey.getKeyHash())) {
-            return Optional.of(apiKey);
-        }
-
-        return Optional.empty();
+        return repository.findByPrefixAndEnabledTrue(prefix)
+                .filter(apiKey -> encoder.matches(incomingKey, apiKey.getKeyHash()));
     }
 }
 
