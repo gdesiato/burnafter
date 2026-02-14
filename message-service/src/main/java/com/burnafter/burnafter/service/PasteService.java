@@ -4,7 +4,9 @@ import com.burnafter.burnafter.dtos.*;
 import com.burnafter.burnafter.exception.InvalidPasteException;
 import com.burnafter.burnafter.exception.InvalidPasteReason;
 import com.burnafter.burnafter.exception.PasteNotFoundException;
+import com.burnafter.burnafter.model.OutboxEvent;
 import com.burnafter.burnafter.model.Paste;
+import com.burnafter.burnafter.repository.OutboxRepository;
 import com.burnafter.burnafter.repository.PasteRepository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,7 +19,8 @@ import java.util.*;
 @Service
 public class PasteService {
 
-    private final PasteRepository repository;
+    private final PasteRepository pasteRepository;
+    private final OutboxRepository outboxRepository;
     private final RestClient auditRestClient;
 
     @Value("${app.maxTextBytes:20000}")     int maxTextBytes;
@@ -25,9 +28,10 @@ public class PasteService {
     @Value("${app.maxTtlMinutes:10080}")    int maxTtlMinutes;
     @Value("${app.publicBaseUrl:}")         private String publicBaseUrl;
 
-    public PasteService(PasteRepository repository,
+    public PasteService(PasteRepository repository, OutboxRepository outboxRepository,
                         RestClient auditRestClient) {
-        this.repository = repository;
+        this.pasteRepository = repository;
+        this.outboxRepository = outboxRepository;
         this.auditRestClient = auditRestClient;
     }
 
@@ -53,7 +57,17 @@ public class PasteService {
                 req.burnAfterRead
         );
 
-        repository.save(p);
+        pasteRepository.save(p);
+
+        pasteRepository.save(p);
+
+        OutboxEvent event = new OutboxEvent(
+                p.getId(),
+                "PASTE_CREATED",
+                p.getId().toString()
+        );
+
+        outboxRepository.save(event);
 
         auditRestClient.post()
                 .uri("/audit")
@@ -80,18 +94,18 @@ public class PasteService {
     @Transactional
     public DataResponse data(UUID id) {
 
-        Paste p = repository.findById(id)
+        Paste p = pasteRepository.findById(id)
                 .orElseThrow(PasteNotFoundException::new);
 
         if (p.isExpired()) {
-            repository.delete(p);
+            pasteRepository.delete(p);
             throw new PasteNotFoundException();
         }
 
         p.consumeView();
 
         if (p.isBurnAfterRead() || p.isDepleted()) {
-            repository.delete(p);
+            pasteRepository.delete(p);
         }
 
         return new DataResponse(p.getIv(), p.getCiphertext());
@@ -100,7 +114,7 @@ public class PasteService {
     @Transactional(readOnly = true)
     public MetaResponse meta(UUID id) {
 
-        Paste p = repository.findById(id)
+        Paste p = pasteRepository.findById(id)
                 .orElseThrow(PasteNotFoundException::new);
 
         if (p.isExpired())
@@ -116,8 +130,8 @@ public class PasteService {
     @Transactional
     public int purgeExpired() {
 
-        List<Paste> expired = repository.findByExpireAtBefore(Instant.now());
-        repository.deleteAll(expired);
+        List<Paste> expired = pasteRepository.findByExpireAtBefore(Instant.now());
+        pasteRepository.deleteAll(expired);
         return expired.size();
     }
 
