@@ -20,38 +20,39 @@ public class SecurityConfig {
         this.apiKeyFilter = apiKeyFilter;
     }
 
-//    @Bean
-//    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-//
-//        http
-//                .cors(Customizer.withDefaults())
-//                .csrf(AbstractHttpConfigurer::disable)
-//                .headers(h -> h
-//                        .referrerPolicy(r -> r.policy(ReferrerPolicy.NO_REFERRER))
-//                        .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
-//                )
-//                .authorizeHttpRequests(auth -> auth
-//                        .requestMatchers("/actuator/health/**").permitAll()
-//                        .requestMatchers("/actuator/info").permitAll()
-//                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-//                        .requestMatchers(HttpMethod.POST, "/api/messages").permitAll()
-//                        .anyRequest().denyAll()
-//                )
-//                .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class);
-//
-//        return http.build();
-//    }
-
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
+                .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
+                .headers(h -> h
+                        .referrerPolicy(r -> r.policy(ReferrerPolicy.NO_REFERRER))
+                        .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
+                )
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()
-                );
+                        .requestMatchers("/actuator/health/**").permitAll()
+                        .requestMatchers("/actuator/info").permitAll()
+                        .requestMatchers("/admin/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/pastes").permitAll()
+                        .anyRequest().denyAll()
+                )
+                .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
+//    @Bean
+//    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+//
+//        http
+//                .csrf(AbstractHttpConfigurer::disable)
+//                .authorizeHttpRequests(auth -> auth
+//                        .anyRequest().permitAll()
+//                );
+//
+//        return http.build();
+//    }
 
 }
