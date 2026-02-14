@@ -1,21 +1,41 @@
 services:
-  postgres:
+
+  postgres-message:
     image: postgres:16
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${MESSAGE_DB}
+      POSTGRES_USER: ${MESSAGE_DB_USER}
+      POSTGRES_PASSWORD: ${MESSAGE_DB_PASSWORD}
     ports:
       - "5432:5432"
 
-  app:
-    build: message-service
-    depends_on:
-      - postgres
+  postgres-audit:
+    image: postgres:16
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
-      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      POSTGRES_DB: ${AUDIT_DB}
+      POSTGRES_USER: ${AUDIT_DB_USER}
+      POSTGRES_PASSWORD: ${AUDIT_DB_PASSWORD}
+    ports:
+      - "5433:5432"
+
+  message-service:
+    build: ./message-service
+    depends_on:
+      - postgres-message
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-message:5432/${MESSAGE_DB}
+      SPRING_DATASOURCE_USERNAME: ${MESSAGE_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MESSAGE_DB_PASSWORD}
     ports:
       - "8080:8080"
+
+  audit-service:
+    build: ./audit-service
+    depends_on:
+      - postgres-audit
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-audit:5432/${AUDIT_DB}
+      SPRING_DATASOURCE_USERNAME: ${AUDIT_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${AUDIT_DB_PASSWORD}
+    ports:
+      - "8081:8080"
