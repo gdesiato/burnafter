@@ -9,6 +9,7 @@ import com.burnafter.burnafter.repository.PasteRepository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 
 import java.time.*;
 import java.util.*;
@@ -17,14 +18,17 @@ import java.util.*;
 public class PasteService {
 
     private final PasteRepository repository;
+    private final RestClient auditRestClient;
 
     @Value("${app.maxTextBytes:20000}")     int maxTextBytes;
     @Value("${app.defaultTtlMinutes:1440}") int defaultTtlMinutes;
     @Value("${app.maxTtlMinutes:10080}")    int maxTtlMinutes;
     @Value("${app.publicBaseUrl:}")         private String publicBaseUrl;
 
-    public PasteService(PasteRepository repository) {
+    public PasteService(PasteRepository repository,
+                        RestClient auditRestClient) {
         this.repository = repository;
+        this.auditRestClient = auditRestClient;
     }
 
     @Transactional
@@ -50,6 +54,16 @@ public class PasteService {
         );
 
         repository.save(p);
+
+        auditRestClient.post()
+                .uri("/audit")
+                .body(new AuditRequest(
+                        p.getId().toString(),
+                        "CREATE",
+                        System.currentTimeMillis()
+                ))
+                .retrieve()
+                .toBodilessEntity();
 
         String readBase = (publicBaseUrl != null && !publicBaseUrl.isBlank())
                 ? publicBaseUrl
