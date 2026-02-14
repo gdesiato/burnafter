@@ -22,10 +22,12 @@ services:
     build: ./message-service
     depends_on:
       - postgres-message
+      - audit-service
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-message:5432/${MESSAGE_DB}
       SPRING_DATASOURCE_USERNAME: ${MESSAGE_DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${MESSAGE_DB_PASSWORD}
+      AUDIT_BASE_URL: ${AUDIT_BASE_URL}
     ports:
       - "8080:8080"
 
