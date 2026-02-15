@@ -21,7 +21,6 @@ public class PasteService {
 
     private final PasteRepository pasteRepository;
     private final OutboxRepository outboxRepository;
-    private final RestClient auditRestClient;
 
     @Value("${app.maxTextBytes:20000}")     int maxTextBytes;
     @Value("${app.defaultTtlMinutes:1440}") int defaultTtlMinutes;
@@ -32,7 +31,6 @@ public class PasteService {
                         RestClient auditRestClient) {
         this.pasteRepository = repository;
         this.outboxRepository = outboxRepository;
-        this.auditRestClient = auditRestClient;
     }
 
     @Transactional
@@ -59,8 +57,6 @@ public class PasteService {
 
         pasteRepository.save(p);
 
-        pasteRepository.save(p);
-
         OutboxEvent event = new OutboxEvent(
                 p.getId(),
                 "PASTE_CREATED",
@@ -68,16 +64,6 @@ public class PasteService {
         );
 
         outboxRepository.save(event);
-
-        auditRestClient.post()
-                .uri("/audit")
-                .body(new AuditRequest(
-                        p.getId().toString(),
-                        "CREATE",
-                        System.currentTimeMillis()
-                ))
-                .retrieve()
-                .toBodilessEntity();
 
         String readBase = (publicBaseUrl != null && !publicBaseUrl.isBlank())
                 ? publicBaseUrl
