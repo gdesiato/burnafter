@@ -1,6 +1,6 @@
 package com.burnafter.burnafter.repository;
 
-import com.burnafter.burnafter.model.OutboxEvent;
+import com.burnafter.burnafter.outbox.OutboxEvent;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

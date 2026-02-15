@@ -1,4 +1,4 @@
-package com.burnafter.burnafter.model;
+package com.burnafter.burnafter.outbox;
 
 import com.burnafter.burnafter.dtos.AuditRequest;
 import com.burnafter.burnafter.repository.OutboxRepository;

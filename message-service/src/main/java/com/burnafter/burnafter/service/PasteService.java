@@ -4,7 +4,7 @@ import com.burnafter.burnafter.dtos.*;
 import com.burnafter.burnafter.exception.InvalidPasteException;
 import com.burnafter.burnafter.exception.InvalidPasteReason;
 import com.burnafter.burnafter.exception.PasteNotFoundException;
-import com.burnafter.burnafter.model.OutboxEvent;
+import com.burnafter.burnafter.outbox.OutboxEvent;
 import com.burnafter.burnafter.model.Paste;
 import com.burnafter.burnafter.repository.OutboxRepository;
 import com.burnafter.burnafter.repository.PasteRepository;
@@ -27,8 +27,7 @@ public class PasteService {
     @Value("${app.maxTtlMinutes:10080}")    int maxTtlMinutes;
     @Value("${app.publicBaseUrl:}")         private String publicBaseUrl;
 
-    public PasteService(PasteRepository repository, OutboxRepository outboxRepository,
-                        RestClient auditRestClient) {
+    public PasteService(PasteRepository repository, OutboxRepository outboxRepository) {
         this.pasteRepository = repository;
         this.outboxRepository = outboxRepository;
     }
@@ -57,6 +56,7 @@ public class PasteService {
 
         pasteRepository.save(p);
 
+        // 🔥 Only Outbox — no REST call
         OutboxEvent event = new OutboxEvent(
                 p.getId(),
                 "PASTE_CREATED",
@@ -65,16 +65,7 @@ public class PasteService {
 
         outboxRepository.save(event);
 
-        String readBase = (publicBaseUrl != null && !publicBaseUrl.isBlank())
-                ? publicBaseUrl
-                : baseUrl;
-
-        return new CreatePasteResponse(
-                p.getId().toString(),
-                readBase + "/p/" + p.getId(),
-                p.getExpireAt(),
-                p.getViewsLeft()
-        );
+        return buildResponse(p, baseUrl);
     }
 
     @Transactional
@@ -123,7 +114,7 @@ public class PasteService {
 
     private void validateCrypto(CreatePasteRequest req) {
 
-        if (isB64(req.ciphertext) || isB64(req.iv))
+        if (!isB64(req.ciphertext) || !isB64(req.iv))
             throw new InvalidPasteException(InvalidPasteReason.INVALID_BASE64);
 
         byte[] ivBytes = Base64.getDecoder().decode(req.iv);
@@ -137,9 +128,9 @@ public class PasteService {
     private boolean isB64(String s) {
         try {
             Base64.getDecoder().decode(s);
-            return false;
-        } catch (Exception e) {
             return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -164,5 +155,19 @@ public class PasteService {
         } catch (Exception e) {
             return Duration.ofMinutes(defaultTtlMinutes);
         }
+    }
+
+    private CreatePasteResponse buildResponse(Paste p, String baseUrl) {
+
+        String readBase = (publicBaseUrl != null && !publicBaseUrl.isBlank())
+                ? publicBaseUrl
+                : baseUrl;
+
+        return new CreatePasteResponse(
+                p.getId().toString(),
+                readBase + "/p/" + p.getId(),
+                p.getExpireAt(),
+                p.getViewsLeft()
+        );
     }
 }

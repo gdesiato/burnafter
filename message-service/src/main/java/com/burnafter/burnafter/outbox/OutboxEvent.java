@@ -1,4 +1,4 @@
-package com.burnafter.burnafter.model;
+package com.burnafter.burnafter.outbox;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -26,6 +26,9 @@ public class OutboxEvent {
 
     private boolean processed;
 
+    @Column(nullable = false)
+    private int retryCount;
+
     protected OutboxEvent() {}
 
     public OutboxEvent(UUID aggregateId,
@@ -37,6 +40,7 @@ public class OutboxEvent {
         this.payload = payload;
         this.createdAt = Instant.now();
         this.processed = false;
+        this.retryCount = 0;
     }
 
     public UUID getId() {
