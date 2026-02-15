@@ -29,6 +29,9 @@ public class OutboxEvent {
     @Column(nullable = false)
     private int retryCount;
 
+    @Column(nullable = false)
+    private Instant nextAttemptAt;
+
     protected OutboxEvent() {}
 
     public OutboxEvent(UUID aggregateId,
@@ -41,6 +44,29 @@ public class OutboxEvent {
         this.createdAt = Instant.now();
         this.processed = false;
         this.retryCount = 0;
+        this.nextAttemptAt = Instant.now(); // immediate first attempt
+    }
+
+    public void incrementRetryWithBackoff() {
+        this.retryCount++;
+        long delaySeconds = (long) Math.pow(2, retryCount);
+        this.nextAttemptAt = Instant.now().plusSeconds(delaySeconds);
+    }
+
+    public Instant getNextAttemptAt() {
+        return nextAttemptAt;
+    }
+
+    public void setNextAttemptAt(Instant nextAttemptAt) {
+        this.nextAttemptAt = nextAttemptAt;
+    }
+
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public void setRetryCount(int retryCount) {
+        this.retryCount = retryCount;
     }
 
     public UUID getId() {

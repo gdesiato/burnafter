@@ -10,41 +10,34 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.time.Instant;
+import java.util.List;
+
 @Component
-@EnableScheduling
 public class OutboxProcessor {
 
-    private static final Logger log =
-            LoggerFactory.getLogger(OutboxProcessor.class);
-
     private final OutboxRepository repository;
-    private final RestClient auditRestClient;
+    private final RestClient auditClient;
+    private static final Logger log = LoggerFactory.getLogger(OutboxProcessor.class);
 
     public OutboxProcessor(OutboxRepository repository,
-                           RestClient auditRestClient) {
+                           RestClient auditClient) {
         this.repository = repository;
-        this.auditRestClient = auditRestClient;
+        this.auditClient = auditClient;
     }
 
     @Scheduled(fixedDelay = 5000)
     @Transactional
     public void process() {
 
-        var events =
-                repository.findTop10ByProcessedFalseOrderByCreatedAtAsc();
+        List<OutboxEvent> events =
+                repository.findTop20ByProcessedFalseAndNextAttemptAtBeforeOrderByCreatedAtAsc(
+                        Instant.now());
 
-        if (events.isEmpty()) {
-            return;
-        }
-
-        log.info("OutboxProcessor found {} pending events", events.size());
-
-        for (var event : events) {
-
+        for (OutboxEvent event : events) {
             try {
-                log.info("Processing event {}", event.getId());
 
-                auditRestClient.post()
+                auditClient.post()
                         .uri("/audit")
                         .body(new AuditRequest(
                                 event.getAggregateId().toString(),
@@ -56,15 +49,20 @@ public class OutboxProcessor {
 
                 event.markProcessed();
 
-                log.info("Event {} processed successfully", event.getId());
+                log.info("Outbox event {} delivered successfully", event.getId());
 
-            } catch (Exception e) {
+            } catch (Exception ex) {
 
-                log.warn("Failed to process event {}. Will retry.",
-                        event.getId());
+                event.incrementRetryWithBackoff();
+
+                log.warn("Outbox event {} failed. Retry #{}. Next attempt at {}",
+                        event.getId(),
+                        event.getRetryCount(),
+                        event.getNextAttemptAt());
 
             }
         }
     }
 }
+
 
