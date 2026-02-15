@@ -123,7 +123,7 @@ public class PasteService {
 
     private void validateCrypto(CreatePasteRequest req) {
 
-        if (!isB64(req.ciphertext) || !isB64(req.iv))
+        if (isB64(req.ciphertext) || isB64(req.iv))
             throw new InvalidPasteException(InvalidPasteReason.INVALID_BASE64);
 
         byte[] ivBytes = Base64.getDecoder().decode(req.iv);
@@ -137,9 +137,9 @@ public class PasteService {
     private boolean isB64(String s) {
         try {
             Base64.getDecoder().decode(s);
-            return true;
-        } catch (Exception e) {
             return false;
+        } catch (Exception e) {
+            return true;
         }
     }
 
