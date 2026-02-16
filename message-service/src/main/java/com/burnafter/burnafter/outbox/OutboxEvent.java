@@ -1,16 +1,28 @@
 package com.burnafter.burnafter.outbox;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
 @Table(name = "outbox_events")
 public class OutboxEvent {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(OutboxEvent.class);
+
+    private static final int MAX_RETRIES = 10;
+
+    public enum Status {
+        PENDING,
+        PROCESSED,
+        FAILED,
+        DEAD
+    }
 
     @Id
     private UUID id;
@@ -24,41 +36,70 @@ public class OutboxEvent {
 
     private Instant createdAt;
 
-    private boolean processed;
+    private Instant nextAttemptAt;
+
+    @Column(columnDefinition = "TEXT")
+    private String lastError;
+
+    @Column
+    private Instant firstAttemptAt;
+
+    @Enumerated(EnumType.STRING)
+    private Status status;
 
     @Column(nullable = false)
     private int retryCount;
 
-    @Column(nullable = false)
-    private Instant nextAttemptAt;
-
     protected OutboxEvent() {}
 
-    public OutboxEvent(UUID aggregateId,
-                       String eventType,
-                       String payload) {
+    public OutboxEvent(UUID aggregateId, String eventType, String payload) {
         this.id = UUID.randomUUID();
         this.aggregateId = aggregateId;
         this.eventType = eventType;
         this.payload = payload;
         this.createdAt = Instant.now();
-        this.processed = false;
+        this.nextAttemptAt = Instant.now();
+        this.status = Status.PENDING;
         this.retryCount = 0;
-        this.nextAttemptAt = Instant.now(); // immediate first attempt
+    }
+
+    public void markProcessed() {
+        this.status = Status.PROCESSED;
+    }
+
+    public void markFailed() {
+        this.status = Status.FAILED;
     }
 
     public void incrementRetryWithBackoff() {
         this.retryCount++;
-        long delaySeconds = (long) Math.pow(2, retryCount);
+
+        // Set firstAttemptAt on first failure
+        if (this.firstAttemptAt == null) {
+            this.firstAttemptAt = Instant.now();
+        }
+
+        // Age-based circuit breaker
+        Duration age = Duration.between(firstAttemptAt, Instant.now());
+        if (age.toHours() > 24) {
+            this.status = Status.DEAD;
+            return;
+        }
+
+        // Retry count circuit breaker
+        if (this.retryCount >= 10) {
+            this.status = Status.DEAD;
+            return;
+        }
+
+        // Exponential backoff, capped at 10 minutes
+        long delaySeconds = Math.min((long) Math.pow(2, retryCount), 600);
         this.nextAttemptAt = Instant.now().plusSeconds(delaySeconds);
     }
 
-    public Instant getNextAttemptAt() {
-        return nextAttemptAt;
-    }
-
-    public void setNextAttemptAt(Instant nextAttemptAt) {
-        this.nextAttemptAt = nextAttemptAt;
+    public void recordFailure(String errorMessage) {
+        this.lastError = errorMessage;
+        incrementRetryWithBackoff();
     }
 
     public int getRetryCount() {
@@ -89,12 +130,12 @@ public class OutboxEvent {
         return createdAt;
     }
 
-    public boolean isProcessed() {
-        return processed;
+    public Status getStatus() {
+        return status;
     }
 
-    public void markProcessed() {
-        this.processed = true;
+    public Instant getNextAttemptAt() {
+        return nextAttemptAt;
     }
 }
 
