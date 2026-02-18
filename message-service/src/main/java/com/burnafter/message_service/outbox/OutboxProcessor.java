@@ -1,102 +1,42 @@
 package com.burnafter.message_service.outbox;
 
-import com.burnafter.message_service.dtos.AuditRequest;
 import com.burnafter.message_service.repository.OutboxRepository;
+import com.burnafter.message_service.service.AuditDeliveryService;
 import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
+import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
 
-@Component
+@Service
 public class OutboxProcessor {
 
-    private static final Logger log =
-            LoggerFactory.getLogger(OutboxProcessor.class);
-
     private final OutboxRepository repository;
-    private final RestClient auditClient;
-
-    @Value("${outbox.batch-size:50}")
-    private int batchSize;
+    private final AuditDeliveryService deliveryService;
 
     public OutboxProcessor(OutboxRepository repository,
-                           RestClient auditClient) {
+                           AuditDeliveryService deliveryService) {
         this.repository = repository;
-        this.auditClient = auditClient;
-    }
-
-    @Scheduled(fixedDelayString = "${outbox.processing-delay-ms:5000}")
-    public void process() {
-
-        List<OutboxEvent> events =
-                repository.findReadyToProcess(
-                        OutboxEvent.Status.PENDING,
-                        Instant.now()
-                );
-
-        if (events.isEmpty()) {
-            return;
-        }
-
-        log.debug("Processing {} outbox events", events.size());
-
-        for (OutboxEvent event : events) {
-            try {
-                processSingleEvent(event);
-            } catch (Exception ex) {
-                event.recordFailure(ex.getMessage());
-                repository.save(event);
-                log.error("Unexpected failure processing event {}",
-                        event.getId(), ex);
-            }
-        }
+        this.deliveryService = deliveryService;
     }
 
     @Transactional
-    protected void processSingleEvent(OutboxEvent event) {
+    public List<OutboxEvent> claimBatch(int batchSize) {
 
-        try {
+        List<OutboxEvent> events =
+                repository.claimBatch(Instant.now(), batchSize);
 
-            auditClient.post()
-                    .uri("/audit")
-                    .body(new AuditRequest(
-                            event.getId().toString(),
-                            event.getAggregateId().toString(),
-                            event.getEventType(),
-                            System.currentTimeMillis()
-                    ))
-                    .retrieve()
-                    .toBodilessEntity();
+        events.forEach(e -> e.setStatus(OutboxEvent.Status.PROCESSING));
 
-            event.markProcessed();
-            repository.save(event);
+        return events;
+    }
 
-            log.info("Outbox event {} delivered successfully",
-                    event.getId());
+    public void processBatch(int batchSize) {
 
-        } catch (Exception ex) {
+        List<OutboxEvent> events = claimBatch(batchSize);
 
-            event.incrementRetryWithBackoff();
-            repository.save(event);
-
-            if (event.getStatus() == OutboxEvent.Status.DEAD) {
-                log.error("Outbox event {} moved to DEAD after {} retries",
-                        event.getId(),
-                        event.getRetryCount());
-            } else {
-                log.warn("Outbox event {} failed. Retry #{}. Next attempt at {}",
-                        event.getId(),
-                        event.getRetryCount(),
-                        event.getNextAttemptAt());
-            }
+        for (OutboxEvent event : events) {
+            deliveryService.deliver(event);
         }
     }
 }
-
-

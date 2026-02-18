@@ -13,17 +13,17 @@ import java.util.UUID;
 @Repository
 public interface OutboxRepository extends JpaRepository<OutboxEvent, UUID> {
 
-    List<OutboxEvent> findTop10ByProcessedFalseOrderByCreatedAtAsc();
-
-    @Query("""
-        SELECT e FROM OutboxEvent e
-        WHERE e.status = :status
-        AND e.nextAttemptAt <= :now
-        ORDER BY e.createdAt ASC
-        """)
-    List<OutboxEvent> findReadyToProcess(
-            @Param("status") OutboxEvent.Status status,
-            @Param("now") Instant now
+    @Query(value = """
+        SELECT * FROM outbox_events
+        WHERE status = 'PENDING'
+        AND next_attempt_at <= :now
+        ORDER BY next_attempt_at
+        LIMIT :limit
+        FOR UPDATE SKIP LOCKED
+        """, nativeQuery = true)
+    List<OutboxEvent> claimBatch(
+            @Param("now") Instant now,
+            @Param("limit") int limit
     );
-
 }
+
