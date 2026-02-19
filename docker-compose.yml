@@ -18,7 +18,7 @@ services:
     ports:
       - "5433:5432"
 
-  message-service:
+  message-service-1:
     build: ./message-service
     depends_on:
       - postgres-message
@@ -27,9 +27,24 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-message:5432/${MESSAGE_DB}
       SPRING_DATASOURCE_USERNAME: ${MESSAGE_DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${MESSAGE_DB_PASSWORD}
-      AUDIT_BASE_URL: ${AUDIT_BASE_URL}
+      AUDIT_BASE_URL: http://audit-service:8080
+      INSTANCE_ID: message-1
     ports:
       - "8080:8080"
+
+  message-service-2:
+    build: ./message-service
+    depends_on:
+      - postgres-message
+      - audit-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-message:5432/${MESSAGE_DB}
+      SPRING_DATASOURCE_USERNAME: ${MESSAGE_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MESSAGE_DB_PASSWORD}
+      AUDIT_BASE_URL: http://audit-service:8080
+      INSTANCE_ID: message-2
+    ports:
+      - "8082:8080"
 
   audit-service:
     build: ./audit-service

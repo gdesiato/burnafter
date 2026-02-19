@@ -4,5 +4,5 @@ public record AuditRequest(
         String eventId,
         String aggregateId,
         String eventType,
-        long timestamp
+        Long timestamp
 ) {}
