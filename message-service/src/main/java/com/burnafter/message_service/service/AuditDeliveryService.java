@@ -21,7 +21,6 @@ public class AuditDeliveryService {
         this.repository = repository;
     }
 
-    @Transactional
     public void deliver(OutboxEvent event) {
 
         try {
@@ -43,7 +42,7 @@ public class AuditDeliveryService {
 
         } catch (Exception ex) {
 
-            event.incrementRetryWithBackoff();
+            event.incrementRetryWithBackoff(ex);
             repository.save(event);
         }
     }

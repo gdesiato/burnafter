@@ -22,9 +22,8 @@ public class OutboxClaimService {
         List<OutboxEvent> events =
                 repository.claimBatch(Instant.now(), batchSize);
 
-        for (OutboxEvent e : events) {
-            e.setStatus(OutboxEvent.Status.PROCESSING);
-        }
+        for (OutboxEvent e : events)
+            e.markProcessing();
 
         return events;
     }

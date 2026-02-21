@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Entity
 @Table(name = "outbox_events")
@@ -19,6 +20,19 @@ public class OutboxEvent {
     @Id
     private UUID id;
 
+    @Column(nullable = false)
+    private Instant createdAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Status status;
+
+    @Column(nullable = false)
+    private int retryCount;
+
+    @Column(nullable = false)
+    private Instant nextAttemptAt;
+
     private UUID aggregateId;
 
     private String eventType;
@@ -26,14 +40,8 @@ public class OutboxEvent {
     @Column(columnDefinition = "TEXT")
     private String payload;
 
-    private Instant createdAt;
-
-    @Enumerated(EnumType.STRING)
-    private Status status;
-
-    private int retryCount;
-
-    private Instant nextAttemptAt;
+    @Column(columnDefinition = "TEXT")
+    private String lastError;
 
     protected OutboxEvent() {}
 
@@ -60,21 +68,19 @@ public class OutboxEvent {
         this.status = Status.DEAD;
     }
 
-    public void incrementRetryWithBackoff() {
+    public void incrementRetryWithBackoff(Exception ex) {
         retryCount++;
+        this.lastError = ex.getMessage();
 
         if (retryCount >= 5) {
             markDead();
             return;
         }
 
-        long backoffSeconds = (long) Math.pow(2, retryCount);
-        nextAttemptAt = Instant.now().plusSeconds(backoffSeconds);
+        long baseDelay = (long) Math.pow(2, retryCount);
+        long jitter = ThreadLocalRandom.current().nextLong(0, 3);
+        nextAttemptAt = Instant.now().plusSeconds(baseDelay + jitter);
         status = Status.PENDING;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
     }
 
     public UUID getId() {
