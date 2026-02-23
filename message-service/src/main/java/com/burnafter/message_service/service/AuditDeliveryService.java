@@ -21,7 +21,6 @@ public class AuditDeliveryService {
         this.repository = repository;
     }
 
-    @Transactional
     public void deliver(OutboxEvent event) {
         try {
             auditClient.post()
