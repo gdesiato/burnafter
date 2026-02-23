@@ -21,10 +21,9 @@ public class AuditDeliveryService {
         this.repository = repository;
     }
 
+    @Transactional
     public void deliver(OutboxEvent event) {
-
         try {
-
             auditClient.post()
                     .uri("/audit")
                     .body(new AuditRequest(
@@ -36,12 +35,7 @@ public class AuditDeliveryService {
                     ))
                     .retrieve()
                     .toBodilessEntity();
-
-            event.markProcessed();
-            repository.save(event);
-
         } catch (Exception ex) {
-
             event.incrementRetryWithBackoff(ex);
             repository.save(event);
         }

@@ -32,12 +32,9 @@ public class OutboxProcessor {
     }
 
     public void processBatch(int batchSize) {
-
-        List<OutboxEvent> events =
-                claimService.claimBatch(batchSize);
+        List<OutboxEvent> events = claimService.claimBatch(batchSize);
 
         for (OutboxEvent event : events) {
-
             try {
                 deliveryService.deliver(event);
                 updateSuccess(event.getId());
