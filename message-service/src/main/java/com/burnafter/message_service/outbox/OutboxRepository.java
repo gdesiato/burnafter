@@ -1,6 +1,5 @@
-package com.burnafter.message_service.repository;
+package com.burnafter.message_service.outbox;
 
-import com.burnafter.message_service.outbox.OutboxEvent;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

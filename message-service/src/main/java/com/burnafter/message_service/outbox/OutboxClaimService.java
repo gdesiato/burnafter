@@ -1,6 +1,5 @@
 package com.burnafter.message_service.outbox;
 
-import com.burnafter.message_service.repository.OutboxRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 

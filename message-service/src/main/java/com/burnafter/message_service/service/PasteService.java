@@ -6,7 +6,7 @@ import com.burnafter.message_service.exception.InvalidPasteReason;
 import com.burnafter.message_service.exception.PasteNotFoundException;
 import com.burnafter.message_service.outbox.OutboxEvent;
 import com.burnafter.message_service.model.Paste;
-import com.burnafter.message_service.repository.OutboxRepository;
+import com.burnafter.message_service.outbox.OutboxRepository;
 import com.burnafter.message_service.repository.PasteRepository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;

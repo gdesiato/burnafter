@@ -68,6 +68,8 @@ public class OutboxEvent {
         this.status = Status.DEAD;
     }
 
+    public boolean isDead() { return this.status == Status.DEAD; }
+
     public void incrementRetryWithBackoff(Exception ex) {
         retryCount++;
         this.lastError = ex.getMessage();
@@ -94,4 +96,6 @@ public class OutboxEvent {
     public String getEventType() {
         return eventType;
     }
+
+    public Status getStatus() { return status; }
 }

@@ -2,8 +2,7 @@ package com.burnafter.message_service.service;
 
 import com.burnafter.message_service.dtos.AuditRequest;
 import com.burnafter.message_service.outbox.OutboxEvent;
-import com.burnafter.message_service.repository.OutboxRepository;
-import jakarta.transaction.Transactional;
+import com.burnafter.message_service.outbox.OutboxRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
