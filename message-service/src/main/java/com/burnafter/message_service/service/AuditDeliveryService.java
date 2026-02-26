@@ -12,30 +12,22 @@ import java.time.Instant;
 public class AuditDeliveryService {
 
     private final RestClient auditClient;
-    private final OutboxRepository repository;
 
-    public AuditDeliveryService(RestClient auditClient,
-                                OutboxRepository repository) {
+    public AuditDeliveryService(RestClient auditClient) {
         this.auditClient = auditClient;
-        this.repository = repository;
     }
 
     public void deliver(OutboxEvent event) {
-        try {
-            auditClient.post()
-                    .uri("/audit")
-                    .body(new AuditRequest(
-                            event.getId().toString(),
-                            event.getAggregateId().toString(),
-                            event.getEventType(),
-                            Instant.now(),
-                            "message-service"
-                    ))
-                    .retrieve()
-                    .toBodilessEntity();
-        } catch (Exception ex) {
-            event.incrementRetryWithBackoff(ex);
-            repository.save(event);
-        }
+        auditClient.post()
+                .uri("/audit")
+                .body(new AuditRequest(
+                        event.getId().toString(),
+                        event.getAggregateId().toString(),
+                        event.getEventType(),
+                        Instant.now(),
+                        "message-service"
+                ))
+                .retrieve()
+                .toBodilessEntity();
     }
 }

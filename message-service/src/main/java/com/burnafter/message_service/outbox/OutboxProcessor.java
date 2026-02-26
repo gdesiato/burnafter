@@ -4,14 +4,12 @@ import com.burnafter.message_service.service.AuditDeliveryService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class OutboxProcessor {
@@ -22,6 +20,7 @@ public class OutboxProcessor {
     private final OutboxClaimService claimService;
     private final AuditDeliveryService deliveryService;
     private final OutboxRepository outboxRepository;
+    private final OutboxStateService outboxStateService;
     private final Counter processedCounter;
     private final Counter retryCounter;
     private final Counter deadCounter;
@@ -32,12 +31,13 @@ public class OutboxProcessor {
 
     public OutboxProcessor(OutboxClaimService claimService,
                            AuditDeliveryService deliveryService,
-                           OutboxRepository outboxRepository,
+                           OutboxRepository outboxRepository, OutboxStateService outboxStateService,
                            MeterRegistry meterRegistry) {
 
         this.claimService = claimService;
         this.deliveryService = deliveryService;
         this.outboxRepository = outboxRepository;
+        this.outboxStateService = outboxStateService;
 
         this.processedCounter = meterRegistry.counter("outbox.events.processed");
         this.retryCounter = meterRegistry.counter("outbox.events.retry");
@@ -51,30 +51,16 @@ public class OutboxProcessor {
             try {
                 deliveryTimer.record(() -> deliveryService.deliver(event));
 
-                updateSuccess(event.getId());
+                outboxStateService.updateSuccess(event.getId());
                 processedCounter.increment();
 
             } catch (Exception ex) {
-                boolean isDead = updateFailure(event.getId(), ex);
+                log.info("Retry increment on instance {}", instanceId);
+                boolean isDead = outboxStateService.updateFailure(event.getId(), ex);
                 retryCounter.increment();
 
                 if (isDead) deadCounter.increment();
             }
         }
-    }
-
-    @Transactional
-    public void updateSuccess(UUID eventId) {
-        OutboxEvent event = outboxRepository.findById(eventId)
-                .orElseThrow();
-        event.markProcessed();
-    }
-
-    @Transactional
-    public boolean updateFailure(UUID eventId, Exception ex) {
-        OutboxEvent event = outboxRepository.findById(eventId)
-                .orElseThrow();
-        event.incrementRetryWithBackoff(ex);
-        return event.isDead();
     }
 }
