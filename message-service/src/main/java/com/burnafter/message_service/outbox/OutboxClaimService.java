@@ -18,11 +18,15 @@ public class OutboxClaimService {
     @Transactional
     public List<OutboxEvent> claimBatch(int batchSize) {
 
-        List<OutboxEvent> events =
-                repository.claimBatch(Instant.now(), batchSize);
+        Instant now = Instant.now();
+        Instant reclaimBefore = now.minusSeconds(60); // configurable
 
-        for (OutboxEvent e : events)
+        List<OutboxEvent> events =
+                repository.claimBatch(now, reclaimBefore, batchSize);
+
+        for (OutboxEvent e : events) {
             e.markProcessing();
+        }
 
         return events;
     }

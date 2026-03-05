@@ -1,6 +1,7 @@
 package com.burnafter.message_service.outbox;
 
 import com.burnafter.message_service.service.AuditDeliveryService;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -28,6 +29,7 @@ public class OutboxProcessor {
     private final Counter deadCounter;
     private final Timer deliveryTimer;
     private final CircuitBreaker circuitBreaker;
+    private final Counter cbOpenCounter;
 
     @Value("${app.instance-id}")
     private String instanceId;
@@ -54,27 +56,33 @@ public class OutboxProcessor {
                 .onStateTransition(event ->
                         log.warn("CircuitBreaker state transition: {}",
                                 event.getStateTransition()));
+        this.cbOpenCounter =
+                meterRegistry.counter("outbox.circuitbreaker.open");
     }
 
     public void processBatch(int batchSize) {
         List<OutboxEvent> events = claimService.claimBatch(batchSize);
+
         for (OutboxEvent event : events) {
             try {
-                deliveryTimer.record(() ->
-                        circuitBreaker.executeRunnable(() ->
+                circuitBreaker.executeRunnable(() ->
+                        deliveryTimer.record(() ->
                                 deliveryService.deliver(event)
                         )
                 );
-
                 outboxStateService.updateSuccess(event.getId());
                 processedCounter.increment();
 
+            } catch (CallNotPermittedException ex) {
+                log.warn("Circuit breaker OPEN — requeue event {}", event.getId());
+                cbOpenCounter.increment();
+                outboxStateService.requeue(event.getId());
+
             } catch (Exception ex) {
-                log.info("Retry increment on instance {}", instanceId);
+                log.warn("Delivery failed for event {} on instance {}", event.getId(), instanceId);
                 boolean isDead = outboxStateService.updateFailure(event.getId(), ex);
                 retryCounter.increment();
-                if (isDead)
-                    deadCounter.increment();
+                if (isDead) deadCounter.increment();
             }
         }
     }

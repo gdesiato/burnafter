@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
@@ -29,5 +30,13 @@ public class OutboxStateService {
                 .orElseThrow();
         event.incrementRetryWithBackoff(ex);
         return event.isDead();
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void requeue(UUID eventId) {
+        OutboxEvent event = outboxRepository.findById(eventId)
+                .orElseThrow();
+        event.setStatus(OutboxEvent.Status.PENDING);
+        event.setNextAttemptAt(Instant.now().plusSeconds(30));
     }
 }

@@ -43,6 +43,9 @@ public class OutboxEvent {
     @Column(columnDefinition = "TEXT")
     private String lastError;
 
+    @Column
+    private Instant processingStartedAt;
+
     protected OutboxEvent() {}
 
     public OutboxEvent(UUID aggregateId, String eventType, String payload) {
@@ -57,6 +60,7 @@ public class OutboxEvent {
     }
 
     public void markProcessing() {
+        this.processingStartedAt = Instant.now();
         this.status = Status.PROCESSING;
     }
 
@@ -98,4 +102,12 @@ public class OutboxEvent {
     }
 
     public Status getStatus() { return status; }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
+    public void setNextAttemptAt(Instant nextAttemptAt) {
+        this.nextAttemptAt = nextAttemptAt;
+    }
 }

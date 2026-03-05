@@ -13,15 +13,27 @@ import java.util.UUID;
 public interface OutboxRepository extends JpaRepository<OutboxEvent, UUID> {
 
     @Query(value = """
-        SELECT * FROM outbox_events
-        WHERE status = 'PENDING'
-        AND next_attempt_at <= :now
-        ORDER BY next_attempt_at
+        SELECT *
+        FROM outbox_events
+        WHERE
+            (
+                status = 'PENDING'
+                AND next_attempt_at <= :now
+            )
+            OR
+            (
+                status = 'PROCESSING'
+                AND processing_started_at <= :reclaimBefore
+            )
+        ORDER BY
+            COALESCE(next_attempt_at, processing_started_at)
         LIMIT :limit
         FOR UPDATE SKIP LOCKED
-        """, nativeQuery = true)
+        """,
+            nativeQuery = true)
     List<OutboxEvent> claimBatch(
             @Param("now") Instant now,
+            @Param("reclaimBefore") Instant reclaimBefore,
             @Param("limit") int limit
     );
 }
