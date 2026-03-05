@@ -22,7 +22,6 @@ public class OutboxProcessor {
 
     private final OutboxClaimService claimService;
     private final AuditDeliveryService deliveryService;
-    private final OutboxRepository outboxRepository;
     private final OutboxStateService outboxStateService;
     private final Counter processedCounter;
     private final Counter retryCounter;
@@ -43,7 +42,6 @@ public class OutboxProcessor {
 
         this.claimService = claimService;
         this.deliveryService = deliveryService;
-        this.outboxRepository = outboxRepository;
         this.outboxStateService = outboxStateService;
 
         this.processedCounter = meterRegistry.counter("outbox.events.processed");
