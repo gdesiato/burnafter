@@ -15,13 +15,11 @@ public interface OutboxRepository extends JpaRepository<OutboxEvent, UUID> {
     @Query(value = """
         SELECT *
         FROM outbox_events
-        WHERE
-            (
+        WHERE (
                 status = 'PENDING'
                 AND next_attempt_at <= :now
             )
-            OR
-            (
+            OR (
                 status = 'PROCESSING'
                 AND processing_started_at <= :reclaimBefore
             )
@@ -37,4 +35,3 @@ public interface OutboxRepository extends JpaRepository<OutboxEvent, UUID> {
             @Param("limit") int limit
     );
 }
-
