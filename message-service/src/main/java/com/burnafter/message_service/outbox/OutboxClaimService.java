@@ -9,6 +9,8 @@ import java.util.List;
 @Service
 public class OutboxClaimService {
 
+    private static final int STALE_EVENT_THRESHOLD_SECONDS = 60;
+
     private final OutboxRepository repository;
 
     public OutboxClaimService(OutboxRepository repository) {
@@ -19,7 +21,7 @@ public class OutboxClaimService {
     public List<OutboxEvent> claimBatch(int batchSize) {
 
         Instant now = Instant.now();
-        Instant reclaimBefore = now.minusSeconds(60); // configurable
+        Instant reclaimBefore = now.minusSeconds(STALE_EVENT_THRESHOLD_SECONDS);
 
         List<OutboxEvent> events =
                 repository.claimBatch(now, reclaimBefore, batchSize);
@@ -27,7 +29,6 @@ public class OutboxClaimService {
         for (OutboxEvent e : events) {
             e.markProcessing();
         }
-
         return events;
     }
 }
