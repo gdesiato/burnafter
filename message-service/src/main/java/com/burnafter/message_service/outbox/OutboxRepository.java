@@ -35,3 +35,4 @@ public interface OutboxRepository extends JpaRepository<OutboxEvent, UUID> {
             @Param("limit") int limit
     );
 }
+
