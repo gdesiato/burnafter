@@ -21,7 +21,8 @@ public class OutboxClaimService {
     public List<OutboxEvent> claimBatch(int batchSize) {
 
         Instant now = Instant.now();
-        Instant reclaimBefore = now.minusSeconds(STALE_EVENT_THRESHOLD_SECONDS);
+        Instant reclaimBefore =
+                now.minusSeconds(STALE_EVENT_THRESHOLD_SECONDS);
 
         List<OutboxEvent> events =
                 repository.claimBatch(now, reclaimBefore, batchSize);
