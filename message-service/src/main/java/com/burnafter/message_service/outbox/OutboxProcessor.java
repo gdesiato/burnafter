@@ -76,27 +76,19 @@ public class OutboxProcessor {
         for (OutboxEvent event : events) {
             try {
                 circuitBreaker.executeRunnable(() ->
-                        deliveryTimer.record(() ->
-                                deliveryService.deliver(event)
-                        )
-                );
-
+                        deliveryTimer.record(() -> deliveryService.deliver(event)));
                 outboxStateService.updateSuccess(event.getId());
                 processedCounter.increment();
 
             } catch (CallNotPermittedException ex) {
-
                 log.warn("Circuit breaker OPEN — requeue event {}", event.getId());
                 cbOpenCounter.increment();
                 outboxStateService.requeue(event.getId());
 
             } catch (Exception ex) {
-
                 log.warn("Delivery failed for event {} on instance {}", event.getId(), instanceId);
-
                 boolean isDead = outboxStateService.updateFailure(event.getId(), ex);
                 retryCounter.increment();
-
                 if (isDead) {
                     deadCounter.increment();
                 }
