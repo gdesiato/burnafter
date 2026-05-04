@@ -8,3 +8,8 @@ scrape_configs:
       - targets:
           - message-service-1:8080
           - message-service-2:8080
+  - job_name: "audit-service"
+    metrics_path: "/actuator/prometheus"
+    static_configs:
+      - targets:
+          - audit-service:8080

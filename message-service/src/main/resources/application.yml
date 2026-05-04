@@ -33,6 +33,7 @@ management:
   metrics:
     tags:
       application: message-service
+      instance: ${INSTANCE_ID:unknown}
 
 outbox:
   batch-size: 50

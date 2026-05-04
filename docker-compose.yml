@@ -62,6 +62,7 @@ services:
     depends_on:
       - message-service-1
       - message-service-2
+      - audit-service
     ports:
       - "9090:9090"
     volumes:

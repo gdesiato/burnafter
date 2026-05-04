@@ -1,6 +1,7 @@
 package com.burnafter.audit_service.controller;
 
 import com.burnafter.audit_service.dto.AuditRequest;
+import com.burnafter.audit_service.metrics.MetricsService;
 import com.burnafter.audit_service.model.AuditEvent;
 import com.burnafter.audit_service.repository.AuditEventRepository;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -15,24 +16,29 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuditController {
 
     private final AuditEventRepository auditEventRepository;
+    private final MetricsService metricsService;
 
-    public AuditController(AuditEventRepository auditEventRepository) {
+    public AuditController(AuditEventRepository auditEventRepository,
+                           MetricsService metricsService) {
         this.auditEventRepository = auditEventRepository;
+        this.metricsService = metricsService;
     }
 
     @PostMapping
     public ResponseEntity<Void> audit(@RequestBody AuditRequest request) {
-
         try {
             auditEventRepository.save(new AuditEvent(
                     request.eventId(),
                     request.aggregateId(),
                     request.eventType()
             ));
-        } catch (DataIntegrityViolationException ex) {
-            // Duplicate eventId → ignore (idempotency)
-        }
+            // increment ONLY if actually persisted
+            metricsService.incrementMessagesConsumed();
 
+        } catch (DataIntegrityViolationException ex) {
+            // duplicate event → ignore (idempotency)
+            // DO NOT increment here
+        }
         return ResponseEntity.ok().build();
     }
 }

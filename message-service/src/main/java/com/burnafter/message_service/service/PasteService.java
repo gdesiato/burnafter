@@ -4,6 +4,7 @@ import com.burnafter.message_service.dtos.*;
 import com.burnafter.message_service.exception.InvalidPasteException;
 import com.burnafter.message_service.exception.InvalidPasteReason;
 import com.burnafter.message_service.exception.PasteNotFoundException;
+import com.burnafter.message_service.metrics.MetricsService;
 import com.burnafter.message_service.outbox.OutboxEvent;
 import com.burnafter.message_service.model.Paste;
 import com.burnafter.message_service.outbox.OutboxRepository;
@@ -20,15 +21,19 @@ public class PasteService {
 
     private final PasteRepository pasteRepository;
     private final OutboxRepository outboxRepository;
+    private final MetricsService metricsService;
 
     @Value("${app.maxTextBytes:20000}")     int maxTextBytes;
     @Value("${app.defaultTtlMinutes:1440}") int defaultTtlMinutes;
     @Value("${app.maxTtlMinutes:10080}")    int maxTtlMinutes;
     @Value("${app.publicBaseUrl:}")         private String publicBaseUrl;
 
-    public PasteService(PasteRepository repository, OutboxRepository outboxRepository) {
+    public PasteService(PasteRepository repository,
+                        OutboxRepository outboxRepository,
+                        MetricsService metricsService) {
         this.pasteRepository = repository;
         this.outboxRepository = outboxRepository;
+        this.metricsService = metricsService;
     }
 
     @Transactional
@@ -55,7 +60,9 @@ public class PasteService {
 
         pasteRepository.save(p);
 
-        // 🔥 Only Outbox — no REST call
+        metricsService.incrementMessagesCreated();
+
+        // Only Outbox — no REST call
         OutboxEvent event = new OutboxEvent(
                 p.getId(),
                 "PASTE_CREATED",
