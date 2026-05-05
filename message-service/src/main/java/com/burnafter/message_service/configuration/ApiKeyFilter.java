@@ -32,6 +32,17 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
+        String path = request.getRequestURI();
+
+        // allow public endpoints
+        if (path.startsWith("/paste") ||
+                path.startsWith("/debug") ||
+                path.startsWith("/actuator")) {
+
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String apiKey = request.getHeader("X-API-KEY");
 
         if (apiKey != null) {
@@ -44,7 +55,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
-                            validKey.get().getPrefix(),  // principal
+                            validKey.get().getPrefix(),
                             null,
                             List.of(new SimpleGrantedAuthority("ROLE_API"))
                     );

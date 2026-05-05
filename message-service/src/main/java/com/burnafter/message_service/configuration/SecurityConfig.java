@@ -33,6 +33,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/admin/**").permitAll()
+                        .requestMatchers("/debug/**").permitAll()
+                        .requestMatchers("/paste/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/pastes").permitAll()
                         .anyRequest().denyAll()
