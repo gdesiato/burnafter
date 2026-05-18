@@ -46,13 +46,23 @@ public class OutboxEvent {
     @Column
     private Instant processingStartedAt;
 
+    @Column(length = 64)
+    private String correlationId;
+
     protected OutboxEvent() {}
 
-    public OutboxEvent(UUID aggregateId, String eventType, String payload) {
+    public OutboxEvent(
+            UUID aggregateId,
+            String eventType,
+            String payload,
+            String correlationId) {
+
         this.id = UUID.randomUUID();
         this.aggregateId = aggregateId;
         this.eventType = eventType;
         this.payload = payload;
+        this.correlationId = correlationId;
+
         this.createdAt = Instant.now();
         this.status = Status.PENDING;
         this.retryCount = 0;
@@ -108,4 +118,6 @@ public class OutboxEvent {
     public void setNextAttemptAt(Instant nextAttemptAt) {
         this.nextAttemptAt = nextAttemptAt;
     }
+
+    public String getCorrelationId() { return correlationId; }
 }

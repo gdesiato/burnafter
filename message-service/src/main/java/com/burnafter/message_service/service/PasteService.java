@@ -9,6 +9,7 @@ import com.burnafter.message_service.outbox.OutboxEvent;
 import com.burnafter.message_service.model.Paste;
 import com.burnafter.message_service.outbox.OutboxRepository;
 import com.burnafter.message_service.repository.PasteRepository;
+import org.slf4j.MDC;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -66,7 +67,8 @@ public class PasteService {
         OutboxEvent event = new OutboxEvent(
                 p.getId(),
                 "PASTE_CREATED",
-                p.getId().toString()
+                p.getId().toString(),
+                MDC.get("correlationId")
         );
 
         outboxRepository.save(event);

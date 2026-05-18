@@ -8,6 +8,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -17,9 +18,7 @@ import java.util.List;
 
 @Service
 public class OutboxProcessor {
-
-    private static final Logger log =
-            LoggerFactory.getLogger(OutboxProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(OutboxProcessor.class);
 
     private final OutboxClaimService claimService;
     private final AuditDeliveryService deliveryService;
@@ -74,9 +73,11 @@ public class OutboxProcessor {
         batchSizeSummary.record(events.size());
 
         for (OutboxEvent event : events) {
+            MDC.put("correlationId", event.getCorrelationId());
+            log.info("Processing outbox event {}", event.getId());
+
             try {
-                circuitBreaker.executeRunnable(() ->
-                        deliveryTimer.record(() -> deliveryService.deliver(event)));
+                circuitBreaker.executeRunnable(() -> deliveryTimer.record(() -> deliveryService.deliver(event)));
                 outboxStateService.updateSuccess(event.getId());
                 processedCounter.increment();
 
@@ -92,6 +93,8 @@ public class OutboxProcessor {
                 if (isDead) {
                     deadCounter.increment();
                 }
+            } finally {
+                MDC.remove("correlationId");
             }
         }
     }

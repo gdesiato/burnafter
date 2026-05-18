@@ -4,6 +4,8 @@ import com.burnafter.message_service.dtos.*;
 import com.burnafter.message_service.service.PasteService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -18,6 +20,8 @@ import java.security.SecureRandom;
 @RestController
 @RequestMapping("/api/pastes")
 public class PasteController {
+    private static final Logger log = LoggerFactory.getLogger(PasteController.class);
+
     private final PasteService service;
     private static final SecureRandom RNG = new SecureRandom();
 
@@ -27,9 +31,12 @@ public class PasteController {
 
     @PostMapping
     public ResponseEntity<CreatePasteResponse> create(@Valid @RequestBody CreatePasteRequest req, HttpServletRequest http) {
+
+        log.info("Create paste request received");
+
         var base = externalBaseUrl(http);
         var resp = service.create(req, base);
-        
+
         return ResponseEntity.created(URI.create(resp.readUrl()))
                 .cacheControl(CacheControl.noStore())
                 .header("Pragma", "no-cache")
