@@ -26,10 +26,10 @@ public class PasteController {
     }
 
     @PostMapping
-    public ResponseEntity<CreatePasteResponse> create(@Valid @RequestBody CreatePasteRequest req,
-                                                      HttpServletRequest http) {
+    public ResponseEntity<CreatePasteResponse> create(@Valid @RequestBody CreatePasteRequest req, HttpServletRequest http) {
         var base = externalBaseUrl(http);
         var resp = service.create(req, base);
+        
         return ResponseEntity.created(URI.create(resp.readUrl()))
                 .cacheControl(CacheControl.noStore())
                 .header("Pragma", "no-cache")
