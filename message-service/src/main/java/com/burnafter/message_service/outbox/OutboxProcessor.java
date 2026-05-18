@@ -28,6 +28,8 @@ public class OutboxProcessor {
     private final Counter retryCounter;
     private final Counter deadCounter;
     private final Counter cbOpenCounter;
+    private final Counter auditMissingCounter;
+    private final Counter duplicateAuditCounter;
 
     private final Timer deliveryTimer;
     private final DistributionSummary batchSizeSummary;
@@ -52,6 +54,8 @@ public class OutboxProcessor {
         this.retryCounter = meterRegistry.counter("outbox.events.retry");
         this.deadCounter = meterRegistry.counter("outbox.events.dead");
         this.cbOpenCounter = meterRegistry.counter("outbox.circuitbreaker.open");
+        this.auditMissingCounter = meterRegistry.counter("consistency.audit.missing");
+        this.duplicateAuditCounter = meterRegistry.counter("consistency.audit.duplicate");
 
         this.deliveryTimer = meterRegistry.timer("outbox.delivery.duration");
 
@@ -69,7 +73,6 @@ public class OutboxProcessor {
 
     public void processBatch(int batchSize) {
         List<OutboxEvent> events = claimService.claimBatch(batchSize);
-
         batchSizeSummary.record(events.size());
 
         for (OutboxEvent event : events) {
@@ -92,6 +95,7 @@ public class OutboxProcessor {
                 retryCounter.increment();
                 if (isDead) {
                     deadCounter.increment();
+                    auditMissingCounter.increment();
                 }
             } finally {
                 MDC.remove("correlationId");
