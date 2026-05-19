@@ -1,0 +1,10 @@
+outbox:
+  retry:
+    enabled: true
+    max-attempts: 5
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      auditService:
+        failureRateThreshold: 100

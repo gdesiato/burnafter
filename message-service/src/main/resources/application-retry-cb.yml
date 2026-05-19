@@ -1,0 +1,13 @@
+outbox:
+  retry:
+    enabled: true
+    max-attempts: 5
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      auditService:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s

@@ -98,6 +98,7 @@ public class OutboxEvent {
         nextAttemptAt = Instant.now().plusSeconds(baseDelay + jitter);
         status = Status.PENDING;
     }
+    public void incrementRetry() {this.retryCount++; }
 
     public UUID getId() {
         return id;
@@ -120,4 +121,12 @@ public class OutboxEvent {
     }
 
     public String getCorrelationId() { return correlationId; }
+
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public void setLastError(String lastError) {
+        this.lastError = lastError;
+    }
 }

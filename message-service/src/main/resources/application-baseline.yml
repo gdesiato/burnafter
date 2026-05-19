@@ -1,0 +1,7 @@
+resilience4j:
+  circuitbreaker:
+    instances:
+      auditService:
+        slidingWindowSize: 100
+        minimumNumberOfCalls: 100
+        failureRateThreshold: 100
