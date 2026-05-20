@@ -26,17 +26,14 @@ public class OutboxStateService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void updateSuccess(UUID eventId) {
 
-        OutboxEvent event =
-                outboxRepository.findById(eventId).orElseThrow();
-
+        OutboxEvent event = outboxRepository.findById(eventId).orElseThrow();
         event.markProcessed();
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean updateFailure(UUID eventId, Exception ex) {
 
-        OutboxEvent event =
-                outboxRepository.findById(eventId).orElseThrow();
+        OutboxEvent event = outboxRepository.findById(eventId).orElseThrow();
 
         event.incrementRetry();
         event.setLastError(ex.getMessage());
@@ -55,7 +52,15 @@ public class OutboxStateService {
         event.setNextAttemptAt(Instant.now().plusSeconds(delay + jitter));
 
         event.setStatus(OutboxEvent.Status.PENDING);
-
         return false;
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void requeue(UUID eventId) {
+        OutboxEvent event = outboxRepository.findById(eventId).orElseThrow();
+
+        event.setStatus(OutboxEvent.Status.PENDING);
+        event.setNextAttemptAt(Instant.now().plusSeconds(30)
+        );
     }
 }
