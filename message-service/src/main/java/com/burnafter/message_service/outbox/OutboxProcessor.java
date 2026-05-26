@@ -1,5 +1,7 @@
 package com.burnafter.message_service.outbox;
 
+import com.burnafter.message_service.resilience.ResilienceStrategy;
+import com.burnafter.message_service.resilience.ResilienceStrategyResolver;
 import com.burnafter.message_service.service.AuditDeliveryService;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.micrometer.core.instrument.Counter;
@@ -13,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import org.springframework.core.env.Environment;
 
 import java.util.List;
 
@@ -36,6 +39,9 @@ public class OutboxProcessor {
 
     private final CircuitBreaker circuitBreaker;
 
+    private final ResilienceStrategyResolver strategyResolver;
+    private final Environment environment;
+
     @Value("${app.instance-id}")
     private String instanceId;
 
@@ -44,7 +50,7 @@ public class OutboxProcessor {
                            OutboxRepository outboxRepository,
                            OutboxStateService outboxStateService,
                            MeterRegistry meterRegistry,
-                           CircuitBreakerRegistry circuitBreakerRegistry) {
+                           CircuitBreakerRegistry circuitBreakerRegistry, ResilienceStrategyResolver strategyResolver, Environment environment) {
 
         this.claimService = claimService;
         this.deliveryService = deliveryService;
@@ -64,6 +70,8 @@ public class OutboxProcessor {
                 .register(meterRegistry);
 
         this.circuitBreaker = circuitBreakerRegistry.circuitBreaker("auditService");
+        this.strategyResolver = strategyResolver;
+        this.environment = environment;
 
         this.circuitBreaker.getEventPublisher()
                 .onStateTransition(event ->
@@ -75,12 +83,24 @@ public class OutboxProcessor {
         List<OutboxEvent> events = claimService.claimBatch(batchSize);
         batchSizeSummary.record(events.size());
 
+        ResilienceStrategy strategy = strategyResolver.resolve(
+                environment.getProperty(
+                        "spring.profiles.active",
+                        "baseline"
+                ));
+
         for (OutboxEvent event : events) {
             MDC.put("correlationId", event.getCorrelationId());
             log.info("Processing outbox event {}", event.getId());
 
             try {
-                circuitBreaker.executeRunnable(() -> deliveryTimer.record(() -> deliveryService.deliver(event)));
+                strategy.execute(() -> {circuitBreaker.executeRunnable(() ->
+                        deliveryTimer.record(() ->
+                                    deliveryService.deliver(event)
+                            )
+                    );
+                    return null;
+                });
                 outboxStateService.updateSuccess(event.getId());
                 processedCounter.increment();
 
