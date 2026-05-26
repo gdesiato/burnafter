@@ -13,11 +13,13 @@ public class ChaosResilienceStrategy implements ResilienceStrategy {
     private final Random random = new Random();
     private final Counter injectedFailureCounter;
     private final Counter injectedDelayCounter;
+    private final ChaosProperties properties;
 
-    public ChaosResilienceStrategy(MeterRegistry meterRegistry) {
+    public ChaosResilienceStrategy(MeterRegistry meterRegistry, ChaosProperties properties) {
 
         this.injectedFailureCounter = meterRegistry.counter("chaos.injected.failures");
         this.injectedDelayCounter = meterRegistry.counter("chaos.injected.delays");
+        this.properties = properties;
     }
 
     @Override
@@ -26,18 +28,18 @@ public class ChaosResilienceStrategy implements ResilienceStrategy {
         double r = random.nextDouble();
 
         // 15% exception injection
-        if (r < 0.15) {
+        if (r < properties.getFailureRate()) {
             System.out.println("CHAOS: injected failure");
             injectedFailureCounter.increment();
             throw new RuntimeException("CHAOS injected failure");
         }
 
         // 10% artificial delay
-        if (r < 0.25) {
+        if (r < properties.getFailureRate() + properties.getDelayRate()) {
             System.out.println("CHAOS: injected delay");
             injectedDelayCounter.increment();
             try {
-                Thread.sleep(800);
+                Thread.sleep(properties.getDelayMs());;
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }

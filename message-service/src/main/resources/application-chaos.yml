@@ -3,6 +3,5 @@ resilience:
     enabled: true
 
     exception-rate: 0.15
-
     delay-rate: 0.10
     delay-ms: 800
