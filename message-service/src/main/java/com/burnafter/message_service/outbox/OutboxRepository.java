@@ -34,5 +34,7 @@ public interface OutboxRepository extends JpaRepository<OutboxEvent, UUID> {
             @Param("reclaimBefore") Instant reclaimBefore,
             @Param("limit") int limit
     );
+
+    long countByStatus(OutboxEvent.Status status);
 }
 

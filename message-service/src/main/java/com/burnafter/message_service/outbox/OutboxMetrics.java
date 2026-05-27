@@ -9,7 +9,9 @@ import org.springframework.stereotype.Component;
 public class OutboxMetrics {
 
     public OutboxMetrics(MeterRegistry registry, OutboxRepository repository) {
-        Gauge.builder("outbox_queue_size", repository, CrudRepository::count)
+        Gauge.builder("outbox_queue_size",
+                        repository,
+                        repo -> repo.countByStatus(OutboxEvent.Status.PENDING))
                 .description("Number of events waiting in outbox")
                 .register(registry);
     }

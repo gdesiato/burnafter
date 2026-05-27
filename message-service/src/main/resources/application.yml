@@ -36,8 +36,8 @@ management:
       instance: ${INSTANCE_ID:unknown}
 
 outbox:
-  batch-size: 50
-  processing-delay-ms: 5000
+  batch-size: 200
+  processing-delay-ms: 500
 
 resilience4j:
   circuitbreaker:
