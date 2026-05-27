@@ -25,7 +25,7 @@ public class StaticResilienceStrategyResolver
     @Override
     public ResilienceStrategy resolve(String profile) {
 
-        if ("chaos".equals(profile)) {
+        if (profile.contains("chaos")) {
             return chaosStrategy;
         }
 
