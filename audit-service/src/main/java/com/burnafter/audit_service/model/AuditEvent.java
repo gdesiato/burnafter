@@ -25,6 +25,12 @@ public class AuditEvent {
     @Column(nullable = false)
     private Instant createdAt;
 
+    @Column(nullable = false)
+    private Instant outboxCreatedAt;
+
+    @Column(nullable = false)
+    private Instant consumedAt;
+
     protected AuditEvent() {}
 
     public AuditEvent(String eventId,

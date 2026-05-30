@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
+import java.time.Instant;
+
 @RestController
 @RequestMapping("/audit")
 public class AuditController {
@@ -39,13 +42,23 @@ public class AuditController {
                     request.aggregateId(),
                     request.eventType()
             ));
-            // increment ONLY if actually persisted
             metricsService.incrementMessagesConsumed();
+
+            Instant consumedAt = Instant.now();
+
+            log.info("outboxCreatedAt={}", request.outboxCreatedAt());
+
+            long divergenceMs = Duration.between(
+                            request.outboxCreatedAt(),
+                            consumedAt).toMillis();
+
+            log.info("Divergence={} ms", divergenceMs);
+
+            metricsService.recordDivergence(divergenceMs);
 
         } catch (DataIntegrityViolationException ex) {
             metricsService.incrementDuplicateAudit();
             log.warn("Duplicate audit event {}", request.eventId());
-            // duplicate event -> ignore (idempotency)
         }
         return ResponseEntity.ok().build();
     }

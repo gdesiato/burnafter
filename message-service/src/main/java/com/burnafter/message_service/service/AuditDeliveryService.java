@@ -33,7 +33,8 @@ public class AuditDeliveryService {
                             event.getAggregateId().toString(),
                             event.getEventType(),
                             Instant.now(),
-                            "message-service"
+                            "message-service",
+                            event.getCreatedAt()
                     ))
                     .retrieve()
                     .toBodilessEntity();

@@ -112,6 +112,10 @@ public class OutboxEvent {
         return eventType;
     }
 
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
     public void setStatus(Status status) {
         this.status = status;
     }
@@ -120,7 +124,8 @@ public class OutboxEvent {
         this.nextAttemptAt = nextAttemptAt;
     }
 
-    public String getCorrelationId() { return correlationId; }
+    public String getCorrelationId() {
+        return correlationId; }
 
     public int getRetryCount() {
         return retryCount;

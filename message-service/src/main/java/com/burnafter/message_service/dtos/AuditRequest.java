@@ -7,5 +7,5 @@ public record AuditRequest(
         String aggregateId,
         String eventType,
         Instant occurredAt,
-        String sourceService
-) {}
+        String sourceService,
+        Instant createdAt) {}
