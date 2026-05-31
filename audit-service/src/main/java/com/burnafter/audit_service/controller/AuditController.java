@@ -37,28 +37,38 @@ public class AuditController {
     @PostMapping
     public ResponseEntity<Void> audit(@RequestBody AuditRequest request) {
         try {
+            Instant consumedAt = Instant.now();
+
             auditEventRepository.save(new AuditEvent(
                     request.eventId(),
                     request.aggregateId(),
-                    request.eventType()
+                    request.eventType(),
+                    request.outboxCreatedAt(),
+                    consumedAt
             ));
+
             metricsService.incrementMessagesConsumed();
 
-            Instant consumedAt = Instant.now();
-
-            log.info("outboxCreatedAt={}", request.outboxCreatedAt());
-
             long divergenceMs = Duration.between(
-                            request.outboxCreatedAt(),
-                            consumedAt).toMillis();
+                    request.outboxCreatedAt(),
+                    consumedAt
+            ).toMillis();
 
-            log.info("Divergence={} ms", divergenceMs);
+            log.info(
+                    "event={} outboxCreatedAt={}",
+                    request.eventId(),
+                    request.outboxCreatedAt()
+            );
 
             metricsService.recordDivergence(divergenceMs);
 
         } catch (DataIntegrityViolationException ex) {
-            metricsService.incrementDuplicateAudit();
-            log.warn("Duplicate audit event {}", request.eventId());
+            log.error(
+                    "Audit insert failed for event {}",
+                    request.eventId(),
+                    ex
+            );
+            throw ex;
         }
         return ResponseEntity.ok().build();
     }

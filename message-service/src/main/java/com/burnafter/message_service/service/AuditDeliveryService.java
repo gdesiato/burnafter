@@ -26,6 +26,13 @@ public class AuditDeliveryService {
 
     public void deliver(OutboxEvent event) {
         try {
+
+            log.info(
+                    "Sending audit event {} createdAt={}",
+                    event.getId(),
+                    event.getCreatedAt()
+            );
+
             auditClient.post()
                     .uri("/audit")
                     .body(new AuditRequest(

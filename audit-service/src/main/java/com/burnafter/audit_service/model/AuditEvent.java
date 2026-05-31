@@ -33,12 +33,20 @@ public class AuditEvent {
 
     protected AuditEvent() {}
 
-    public AuditEvent(String eventId,
-                      String aggregateId,
-                      String eventType) {
+    public AuditEvent(
+            String eventId,
+            String aggregateId,
+            String eventType,
+            Instant outboxCreatedAt,
+            Instant consumedAt) {
+
         this.eventId = eventId;
         this.aggregateId = aggregateId;
         this.eventType = eventType;
+
         this.createdAt = Instant.now();
+
+        this.outboxCreatedAt = outboxCreatedAt;
+        this.consumedAt = consumedAt;
     }
 }
