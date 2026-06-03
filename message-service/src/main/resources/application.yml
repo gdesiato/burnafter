@@ -41,6 +41,10 @@ management:
       percentiles-histogram:
         outbox.delivery.duration: true
 
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%X{correlationId}] %-5level %logger{36} - %msg%n"
+
 outbox:
   batch-size: 200
   processing-delay-ms: 500
@@ -55,7 +59,3 @@ resilience4j:
         waitDurationInOpenState: 10s
         permittedNumberOfCallsInHalfOpenState: 3
         automaticTransitionFromOpenToHalfOpenEnabled: true
-
-logging:
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%X{correlationId}] %-5level %logger{36} - %msg%n"
