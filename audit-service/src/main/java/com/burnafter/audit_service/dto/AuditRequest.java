@@ -6,6 +6,5 @@ public record AuditRequest(
         String eventId,
         String aggregateId,
         String eventType,
-        Long timestamp,
         Instant outboxCreatedAt
 ) {}

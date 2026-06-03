@@ -39,8 +39,6 @@ public class AuditDeliveryService {
                             event.getId().toString(),
                             event.getAggregateId().toString(),
                             event.getEventType(),
-                            Instant.now(),
-                            "message-service",
                             event.getCreatedAt()
                     ))
                     .retrieve()
