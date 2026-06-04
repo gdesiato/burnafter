@@ -29,7 +29,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${MESSAGE_DB_PASSWORD}
       AUDIT_BASE_URL: http://audit-service:8080
       INSTANCE_ID: message-1
-      SPRING_PROFILES_ACTIVE: baseline
+      SPRING_PROFILES_ACTIVE: retry
     ports:
       - "8080:8080"
 

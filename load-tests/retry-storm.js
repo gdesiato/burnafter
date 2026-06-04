@@ -1,12 +1,5 @@
 import http from 'k6/http';
 
-/*
-Designed for experiments where:
-- audit-service is slow/down
-- retries accumulate
-- outbox queue grows
-*/
-
 export const options = {
   vus: 200,
   duration: '90s',
@@ -23,7 +16,7 @@ const payload = JSON.stringify({
 
 export default function () {
   http.post(
-    'http://localhost:8080/api/pastes',
+    'http://localhost/api/pastes',
     payload,
     {
       headers: {
