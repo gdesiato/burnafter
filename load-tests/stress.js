@@ -18,7 +18,7 @@ const payload = JSON.stringify({
 
 export default function () {
   http.post(
-    'http://localhost:8080/api/pastes',
+    'http://localhost/api/pastes',
     payload,
     {
       headers: {

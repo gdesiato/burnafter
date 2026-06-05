@@ -1,7 +1,7 @@
 outbox:
   retry:
     enabled: true
-    max-attempts: 5
+    max-attempts: 20
 
 resilience4j:
   circuitbreaker:
