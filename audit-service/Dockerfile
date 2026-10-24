@@ -17,6 +17,8 @@ WORKDIR /app
 
 COPY --from=build /src/target/*.jar app.jar
 
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 RUN addgroup --system spring && adduser --system spring --ingroup spring
 USER spring:spring
 
