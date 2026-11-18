@@ -19,8 +19,9 @@ interface MetaResponseRaw {
   hasPassword: boolean;
 }
 export interface PasteData {
-  iv: string;
-  ciphertext: string;
+  ok: boolean;
+  iv: string | null;
+  ciphertext: string | null;
 }
 
 /** Normalized responses for the UI */

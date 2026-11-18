@@ -65,13 +65,21 @@ export class ViewComponent implements OnInit, OnDestroy {
     const frag = (window.location.hash || '').slice(1);
     if (!frag) { this.openError = 'Missing decryption info in URL'; return; }
 
+    // Check BEFORE fetching: fetching the data consumes a view.
+    const isPwd = frag.startsWith('pwd:');
+    if (isPwd && !this.password.trim()) { this.openError = 'Please enter password'; return; }
+
     this.api.getData(this.id).subscribe({
       next: async data => {
+        // The backend always answers 200 (so existence can't be probed);
+        // "ok" tells us whether there is anything to decrypt.
+        if (!data.ok || !data.ciphertext || !data.iv) {
+          this.openError = 'This message has already been read or has expired';
+          return;
+        }
         try {
-          if (frag.startsWith('pwd:')) {
-            const saltB64 = frag.slice(4);
-            if (!this.password.trim()) { this.openError = 'Please enter password'; return; }
-            const key = await deriveKey(this.password, saltB64);
+          if (isPwd) {
+            const key = await deriveKey(this.password, frag.slice(4));
             this.content = await decryptGCMWithKey(data.ciphertext, data.iv, key);
           } else {
             this.content = await decryptGCM(data.ciphertext, data.iv, frag);
@@ -83,8 +91,8 @@ export class ViewComponent implements OnInit, OnDestroy {
           this.openError = 'Failed to decrypt (wrong password or corrupted data)';
         }
       },
-      error: err => {
-        this.openError = (err?.status === 404) ? 'Not found or expired' : 'Unable to load paste';
+      error: () => {
+        this.openError = 'Unable to load paste';
       }
     });
   }
