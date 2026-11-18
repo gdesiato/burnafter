@@ -37,6 +37,9 @@ public class SecurityConfig {
                         .requestMatchers("/paste/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/pastes").permitAll()
+                        // Read links are public by design: the random UUID is the
+                        // capability and the decryption key lives in the URL fragment.
+                        .requestMatchers(HttpMethod.GET, "/api/pastes/**").permitAll()
                         .anyRequest().denyAll()
                 )
                 .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class);

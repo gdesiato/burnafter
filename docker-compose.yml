@@ -117,7 +117,7 @@ services:
       - grafana-data:/var/lib/grafana
 
   nginx:
-    image: nginx:alpine
+    build: ./frontend
     ports:
       - "80:80"
     volumes:
