@@ -2,12 +2,9 @@ package com.burnafter.audit_service.controller;
 
 import com.burnafter.audit_service.dto.AuditRequest;
 import com.burnafter.audit_service.metrics.MetricsService;
-import com.burnafter.audit_service.model.AuditEvent;
 import com.burnafter.audit_service.repository.AuditEventRepository;
-import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,42 +31,44 @@ public class AuditController {
         this.metricsService = metricsService;
     }
 
+    /**
+     * Idempotent consumer. The message-service outbox delivers at-least-once,
+     * so the same eventId can arrive more than once (crash after delivery,
+     * stale PROCESSING reclaim). A duplicate is acknowledged with 200 so the
+     * producer stops retrying, and is counted instead of stored twice.
+     */
     @PostMapping
     public ResponseEntity<Void> audit(@RequestBody AuditRequest request) {
-        try {
-            Instant consumedAt = Instant.now();
+        Instant consumedAt = Instant.now();
 
-            auditEventRepository.save(new AuditEvent(
-                    request.eventId(),
-                    request.aggregateId(),
-                    request.eventType(),
-                    request.outboxCreatedAt(),
-                    consumedAt
-            ));
+        int inserted = auditEventRepository.insertIfAbsent(
+                request.eventId(),
+                request.aggregateId(),
+                request.eventType(),
+                consumedAt,
+                request.outboxCreatedAt(),
+                consumedAt
+        );
 
-            metricsService.incrementMessagesConsumed();
-
-            long divergenceMs = Duration.between(
-                    request.outboxCreatedAt(),
-                    consumedAt
-            ).toMillis();
-
-            log.info(
-                    "event={} outboxCreatedAt={}",
-                    request.eventId(),
-                    request.outboxCreatedAt()
-            );
-
-            metricsService.recordDivergence(divergenceMs);
-
-        } catch (DataIntegrityViolationException ex) {
-            log.error(
-                    "Audit insert failed for event {}",
-                    request.eventId(),
-                    ex
-            );
-            throw ex;
+        if (inserted == 0) {
+            log.info("Duplicate audit event {} ignored", request.eventId());
+            metricsService.incrementDuplicateAudit();
+            return ResponseEntity.ok().build();
         }
+
+        metricsService.incrementMessagesConsumed();
+
+        // Only first deliveries feed the consistency-lag metric;
+        // duplicates would skew it upwards.
+        long divergenceMs = Duration.between(
+                request.outboxCreatedAt(),
+                consumedAt
+        ).toMillis();
+        metricsService.recordDivergence(divergenceMs);
+
+        log.info("event={} outboxCreatedAt={}",
+                request.eventId(), request.outboxCreatedAt());
+
         return ResponseEntity.ok().build();
     }
 }

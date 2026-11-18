@@ -49,4 +49,8 @@ public class AuditEvent {
         this.outboxCreatedAt = outboxCreatedAt;
         this.consumedAt = consumedAt;
     }
+
+    public String getEventId() {
+        return eventId;
+    }
 }
