@@ -1,0 +1,181 @@
+{
+  "uid": "burnafter",
+  "title": "BurnAfter – Outbox & Resilience",
+  "tags": ["burnafter"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Outbox backlog (pending events)",
+      "description": "Events committed with a paste but not yet delivered to the audit service. Grows during an audit outage, drains on recovery.",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "max(outbox_queue_size)", "legendFormat": "pending" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "showLegend": false }, "tooltip": { "mode": "single" } }
+    },
+    {
+      "id": 2,
+      "type": "state-timeline",
+      "title": "Circuit breaker state (auditService)",
+      "description": "Per message-service instance. Opens when the audit failure rate crosses the threshold, half-opens after the wait duration, closes when trial calls succeed.",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (exported_instance) (resilience4j_circuitbreaker_state{name=\"auditService\", state=\"open\"}) * 2 + on (exported_instance) max by (exported_instance) (resilience4j_circuitbreaker_state{name=\"auditService\", state=\"half_open\"})",
+          "legendFormat": "{{exported_instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 2 }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "CLOSED", "color": "green" },
+                "1": { "text": "HALF-OPEN", "color": "yellow" },
+                "2": { "text": "OPEN", "color": "red" }
+              }
+            }
+          ],
+          "custom": { "fillOpacity": 80, "lineWidth": 0 }
+        },
+        "overrides": []
+      },
+      "options": { "showValue": "auto", "mergeValues": true, "rowHeight": 0.8, "legend": { "showLegend": false } }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Pastes created vs audited (per second)",
+      "description": "Producer rate (pastes written) vs consumer rate (audit records stored). The gap between the lines is eventual consistency in action.",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(messages_total[30s]))", "legendFormat": "pastes created" },
+        { "refId": "B", "expr": "sum(rate(messages_consumed_total[30s]))", "legendFormat": "audit records stored" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "min": 0, "custom": { "fillOpacity": 10, "lineWidth": 2 } },
+        "overrides": []
+      },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Outbox delivery outcomes (per second)",
+      "description": "delivered = audit accepted; retried = delivery failed, rescheduled with backoff; rejected by breaker = circuit open, requeued without spending a retry; dead = gave up.",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(outbox_events_processed_total[30s]))", "legendFormat": "delivered" },
+        { "refId": "B", "expr": "sum(rate(outbox_events_retry_total[30s]))", "legendFormat": "retried" },
+        { "refId": "C", "expr": "sum(rate(outbox_circuitbreaker_open_total[30s]))", "legendFormat": "rejected by breaker" },
+        { "refId": "D", "expr": "sum(rate(outbox_events_dead_total[30s]))", "legendFormat": "dead" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "min": 0, "custom": { "fillOpacity": 10, "lineWidth": 2 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "delivered" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
+          { "matcher": { "id": "byName", "options": "retried" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "yellow" } }] },
+          { "matcher": { "id": "byName", "options": "rejected by breaker" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }] },
+          { "matcher": { "id": "byName", "options": "dead" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] }
+        ]
+      },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Consistency lag (outbox created → audit stored)",
+      "description": "How long until an event created with a paste exists in the audit service. Spikes during an outage, returns to the polling interval afterwards.",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum by (le) (rate(consistency_divergence_window_ms_bucket[1m])))", "legendFormat": "p50" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(consistency_divergence_window_ms_bucket[1m])))", "legendFormat": "p95" },
+        { "refId": "C", "expr": "max(consistency_divergence_window_ms_max)", "legendFormat": "max" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ms", "min": 0, "custom": { "fillOpacity": 10, "lineWidth": 2 } },
+        "overrides": []
+      },
+      "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Events dead (gave up)",
+      "gridPos": { "x": 12, "y": 16, "w": 4, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "sum(outbox_events_dead_total) or vector(0)" } ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Duplicates absorbed (idempotent consumer)",
+      "gridPos": { "x": 16, "y": 16, "w": 4, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "sum(consistency_audit_duplicate_total{application=\"audit-service\"}) or vector(0)" } ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "blue", "value": null } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Audit records stored",
+      "gridPos": { "x": 20, "y": 16, "w": 4, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "sum(messages_consumed_total) or vector(0)" } ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } }
+    }
+  ]
+}
