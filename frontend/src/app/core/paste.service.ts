@@ -12,12 +12,6 @@ interface CreateResponseRaw {
   expireAt: string | null;
   viewsLeft: number;
 }
-interface MetaResponseRaw {
-  kind: string;
-  expireAt: string | null;
-  viewsLeft: number;
-  hasPassword: boolean;
-}
 export interface PasteData {
   ok: boolean;
   iv: string | null;
@@ -28,11 +22,6 @@ export interface PasteData {
 export interface CreateResponse {
   id: string;
   readUrl: string;
-  expiresAt: string | null;
-  remaining: number;
-}
-export interface PasteMeta {
-  kind: string;
   expiresAt: string | null;
   remaining: number;
 }
@@ -79,19 +68,6 @@ export class PasteService {
     opts: { expiresIn: ExpiresKey; views: number; burnAfterRead: boolean }
   ): Observable<CreateResponse> {
     return this.createEncrypted(ciphertext, iv, opts);
-  }
-
-  // METADATA
-  getMeta(id: string): Observable<PasteMeta> {
-    return this.http.get<Omit<MetaResponseRaw, 'hasPassword'>>(
-      `${this.base}/${encodeURIComponent(id)}`
-    ).pipe(
-      map(raw => ({
-        kind: raw.kind,
-        expiresAt: raw.expireAt ?? null,
-        remaining: raw.viewsLeft
-      }))
-    );
   }
 
   // READ ENCRYPTED PAYLOAD

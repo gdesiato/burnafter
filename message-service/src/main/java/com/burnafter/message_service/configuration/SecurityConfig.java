@@ -8,17 +8,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 
 @Configuration
 public class SecurityConfig {
-
-    private final ApiKeyFilter apiKeyFilter;
-
-    public SecurityConfig(ApiKeyFilter apiKeyFilter) {
-        this.apiKeyFilter = apiKeyFilter;
-    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -31,32 +24,16 @@ public class SecurityConfig {
                         .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // Health checks + Prometheus scraping (not exposed via Nginx).
                         .requestMatchers("/actuator/**").permitAll()
-                        .requestMatchers("/admin/**").permitAll()
-                        .requestMatchers("/debug/**").permitAll()
-                        .requestMatchers("/paste/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/pastes").permitAll()
                         // Read links are public by design: the random UUID is the
                         // capability and the decryption key lives in the URL fragment.
-                        .requestMatchers(HttpMethod.GET, "/api/pastes/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/pastes/*/data").permitAll()
                         .anyRequest().denyAll()
-                )
-                .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class);
+                );
 
         return http.build();
     }
-
-//    @Bean
-//    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-//
-//        http
-//                .csrf(AbstractHttpConfigurer::disable)
-//                .authorizeHttpRequests(auth -> auth
-//                        .anyRequest().permitAll()
-//                );
-//
-//        return http.build();
-//    }
-
 }

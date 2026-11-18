@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/co
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { PasteService, PasteMeta } from '../../core/paste.service';
+import { PasteService } from '../../core/paste.service';
 import { deriveKey, decryptGCMWithKey, decryptGCM } from '../../shared/crypto.util';
 
 @Component({
@@ -14,8 +14,6 @@ import { deriveKey, decryptGCMWithKey, decryptGCM } from '../../shared/crypto.ut
 })
 export class ViewComponent implements OnInit, OnDestroy {
   id = '';
-  meta: PasteMeta | null = null;
-  loadingMeta = true;
 
   // UI state
   password = '';
@@ -33,7 +31,7 @@ export class ViewComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     const rid = this.route.snapshot.paramMap.get('id');
-    if (!rid) { this.openError = 'Invalid link: missing id'; this.loadingMeta = false; return; }
+    if (!rid) { this.openError = 'Invalid link: missing id'; return; }
     this.id = rid;
 
     this.openClicked = false;
@@ -41,12 +39,6 @@ export class ViewComponent implements OnInit, OnDestroy {
 
     this.updatePwdFlag();
     window.addEventListener('hashchange', this.onHashChange);
-
-    // Load meta quietly; if it fails, just hide the hint
-    this.api.getMeta(this.id).subscribe({
-      next: (m) => { this.meta = m; this.loadingMeta = false; },
-      error: () => { this.meta = null; this.loadingMeta = false; }
-    });
   }
 
   ngOnDestroy() {

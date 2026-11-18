@@ -43,16 +43,6 @@ public class PasteController {
                 .body(resp);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<MetaResponse> meta(@PathVariable UUID id) {
-        var meta = service.meta(id);
-        if (meta == null) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noStore())
-                .header("Pragma", "no-cache")
-                .body(meta);
-    }
-
     // Hardened: never leak if a paste exists or not
     // Accept String so a malformed UUID does NOT cause 400 (which would leak).
     @GetMapping("/{id}/data")

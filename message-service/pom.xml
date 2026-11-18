@@ -68,16 +68,15 @@
 			<artifactId>postgresql</artifactId>
 		</dependency>
 
-		<!-- Flyway -->
+		<!-- Flyway (Boot 4: auto-configuration lives in the starter, flyway-core alone does nothing) -->
 		<dependency>
-			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-core</artifactId>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-flyway</artifactId>
 		</dependency>
 
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
-			<version>12.0.1</version>
 		</dependency>
 
 		<!-- Test -->

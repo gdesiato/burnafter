@@ -96,22 +96,6 @@ public class PasteService {
         return new DataResponse(p.getIv(), p.getCiphertext());
     }
 
-    @Transactional(readOnly = true)
-    public MetaResponse meta(UUID id) {
-
-        Paste p = pasteRepository.findById(id)
-                .orElseThrow(PasteNotFoundException::new);
-
-        if (p.isExpired())
-            throw new PasteNotFoundException();
-
-        return new MetaResponse(
-                p.getKind().name(),
-                p.getExpireAt(),
-                p.getViewsLeft()
-        );
-    }
-
     @Transactional
     public int purgeExpired() {
 
