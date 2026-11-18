@@ -10,6 +10,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [ message-service, audit-service ]
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+
     services:
       postgres:
         image: postgres:15
@@ -30,6 +39,7 @@ jobs:
       SPRING_DATASOURCE_USERNAME: burnafter
       SPRING_DATASOURCE_PASSWORD: burnafter
       SPRING_PROFILES_ACTIVE: test
+      AUDIT_BASE_URL: http://localhost:8081
 
     steps:
       - name: Checkout repository
@@ -46,4 +56,4 @@ jobs:
         run: ./mvnw clean verify
 
       - name: Build Docker image
-        run: docker build -t burnafter:ci .
+        run: docker build -t burnafter-${{ matrix.service }}:ci .
