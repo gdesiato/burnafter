@@ -3,6 +3,9 @@ server:
   forward-headers-strategy: framework
 
 spring:
+  application:
+    name: audit-service
+
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
