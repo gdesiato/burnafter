@@ -3,26 +3,21 @@
     <h1>Read now</h1>
 
     <div class="form">
-      @if (openClicked && openError) {
-        <div class="err">error: {{ openError }}</div>
+      @if (error) {
+        <div class="err">error: {{ error }}</div>
       }
 
-      @if (!opened) {
-        <div>
-          @if (hasPwdFragment) {
-            <div style="margin:10px 0;">
-              <label>Password<br>
-                <input [(ngModel)]="password" type="password" class="in" autocomplete="current-password">
-              </label>
-            </div>
-          }
-
-          <button class="btn" (click)="open()">open</button>
-        </div>
-      }
-
-      @if (opened) {
-        <pre #noteEl class="note" tabindex="-1">{{ content }}</pre>
+      @if (content === null) {
+        @if (needsPassword) {
+          <p>
+            <label>Password<br>
+              <input [(ngModel)]="password" type="password" class="in" autocomplete="current-password">
+            </label>
+          </p>
+        }
+        <button class="btn" (click)="open()" [disabled]="loading">open</button>
+      } @else {
+        <pre class="note">{{ content }}</pre>
       }
     </div>
   </div>

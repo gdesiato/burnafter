@@ -30,9 +30,9 @@ h1 {
   margin-bottom: 16px;
 }
 
-/* Generic controls (EXCEPT checkboxes) */
+/* Generic controls */
 textarea,
-input:not([type="checkbox"]),
+input,
 select,
 button {
   font-family: inherit;
@@ -43,20 +43,6 @@ button {
   padding: 4px 6px;
   -webkit-appearance: none;
   appearance: none;
-}
-
-/* Restore native checkbox look & clickability */
-input[type="checkbox"] {
-  -webkit-appearance: auto;
-  appearance: auto;
-  border: initial;
-  background: initial;
-  padding: 0;
-  width: 16px;
-  height: 16px;
-  vertical-align: middle;
-  margin: 0 6px 0 0;
-  cursor: pointer;
 }
 
 /* Full width for text-ish inputs */
@@ -98,15 +84,6 @@ p { margin: 10px 0; }
 
 input[readonly] { background: #f9f9f9; }
 
-.note {
-  white-space: pre-wrap;
-  border: 1px dashed var(--line, #000);
-  background: #f5f5f5;
-  padding: 10px;
-  min-height: 120px;
-  margin-top: 10px;
-  font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace;
-}
 
 /* =========================================================
    Textarea wrapper with IN-CORNER counter (replacement)
@@ -144,6 +121,9 @@ input[readonly] { background: #f9f9f9; }
   border-radius: 4px;
   margin: 0;
 }
+
+.textarea-wrapper .counter.warn { color: #ed6c02; }
+.textarea-wrapper .counter.over { color: #d32f2f; }
 
 .textarea-wrapper .counter .muted {
   opacity: 0.7;
@@ -202,34 +182,3 @@ input[readonly] { background: #f9f9f9; }
 }
 
 .copy-btn:active { background: #e5e5e5; }
-
-/* success state */
-.copy-btn.copied {
-  background: #e7f9ef;
-  border-color: #22c55e;
-  color: #16a34a;
-}
-
-.copy-btn .check { margin-left: 4px; }
-
-/* Toast message */
-.toast {
-  position: fixed;
-  right: 16px;
-  bottom: max(16px, env(safe-area-inset-bottom));
-  background: rgba(0,0,0,0.85);
-  color: #fff;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  animation: toast-in 180ms ease-out, toast-out 180ms ease-in 1.2s forwards;
-  pointer-events: none;
-}
-
-@keyframes toast-in {
-  from { transform: translateY(8px); opacity: 0; }
-  to   { transform: translateY(0);   opacity: 1; }
-}
-@keyframes toast-out {
-  to { opacity: 0; transform: translateY(8px); }
-}

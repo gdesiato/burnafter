@@ -145,7 +145,7 @@ Users never notice the outage. The audit trail is delayed but complete: 0 events
 
 ```bash
 ID=$(curl -s -X POST localhost/api/pastes -H 'Content-Type: application/json' \
-  -d '{"kind":"TEXT","ciphertext":"YWJjZGVmZw==","iv":"MDEyMzQ1Njc4OWFi","views":1,"burnAfterRead":true}' \
+  -d '{"ciphertext":"YWJjZGVmZw==","iv":"MDEyMzQ1Njc4OWFi","views":1}' \
   | sed -E 's/.*"id":"([^"]+)".*/\1/')
 seq 20 | xargs -P 20 -I{} curl -s localhost/api/pastes/$ID/data | grep -c '"ok":true'   # -> 1
 ```

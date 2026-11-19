@@ -42,25 +42,7 @@
                   "maximumError": "8kB"
                 }
               ],
-              "outputHashing": "all",
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.prod.ts"
-                }
-              ],
-              "baseHref": "/burnafter/",
-              "deployUrl": "/burnafter/"
-            },
-            "docker": {
-              "outputHashing": "all",
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.docker.ts"
-                }
-              ],
-              "baseHref": "/"
+              "outputHashing": "all"
             },
             "development": {
               "optimization": false,
@@ -80,7 +62,10 @@
               "buildTarget": "burnafter-ui:build:development"
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "development",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          }
         },
         "extract-i18n": {
           "builder": "@angular/build:extract-i18n"

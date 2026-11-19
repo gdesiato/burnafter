@@ -6,8 +6,7 @@
   "start": "ng serve",
   "build": "ng build",
   "watch": "ng build --watch --configuration development",
-  "test": "ng test",
-  "deploy-gh": "rm -rf dist && ng build --configuration production && grep -R \"localhost:8080\" dist/burnafter-ui/browser || echo 'no localhost found' && npx angular-cli-ghpages --dir=dist/burnafter-ui/browser"
+  "test": "ng test"
   },
   "prettier": {
     "printWidth": 100,
@@ -38,7 +37,6 @@
     "@angular/cli": "^20.3.3",
     "@angular/compiler-cli": "^20.3.0",
     "@types/jasmine": "~5.1.0",
-    "angular-cli-ghpages": "^2.0.3",
     "jasmine-core": "~5.9.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",

@@ -1,84 +1,41 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { map, Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { firstValueFrom } from 'rxjs';
 
-export type ExpiresKey = '10min' | '1h' | '24h' | '7d';
+export type Expiry = '10min' | '1h' | '24h' | '7d';
 
-/** Raw responses from Spring (as the backend sends them) */
-interface CreateResponseRaw {
-  id: string;
-  readUrl?: string;
-  expireAt: string | null;
-  viewsLeft: number;
+/** What the server receives: encrypted data only, never the key. */
+export interface NewPaste {
+  ciphertext: string;
+  iv: string;
+  expiresIn: Expiry;
+  views: number;
 }
+
+/**
+ * The server always answers 200, so nobody can probe whether a link exists.
+ * ok=false means "nothing to decrypt" (already read, expired, or never existed).
+ */
 export interface PasteData {
   ok: boolean;
   iv: string | null;
   ciphertext: string | null;
 }
 
-/** Normalized responses for the UI */
-export interface CreateResponse {
-  id: string;
-  readUrl: string;
-  expiresAt: string | null;
-  remaining: number;
-}
-
+// Relative URLs: Nginx serves the UI and proxies /api to the backend on the
+// same origin (and `ng serve` does the same with proxy.conf.json).
 @Injectable({ providedIn: 'root' })
 export class PasteService {
-  private readonly base = `${environment.apiBase}/api/pastes`;
+  private http = inject(HttpClient);
 
-  constructor(private http: HttpClient) {}
-
-  // CREATE (ZK-only)
-  createEncrypted(
-    ciphertext: string,
-    iv: string,
-    opts: { expiresIn: ExpiresKey; views: number; burnAfterRead: boolean }
-  ): Observable<CreateResponse> {
-
-    const body = {
-      kind: 'TEXT' as const,
-      ciphertext,
-      iv,
-      views: opts.views,
-      burnAfterRead: opts.burnAfterRead,
-      expiresIn: opts.expiresIn
-    };
-
-    return this.http.post<CreateResponseRaw>(this.base, body).pipe(
-      map(raw => ({
-        id: raw.id,
-        readUrl: raw.readUrl || `${this.baseHref()}/p/${raw.id}`,
-        expiresAt: raw.expireAt ?? null,
-        remaining: raw.viewsLeft
-      }))
-    );
+  /** Stores the encrypted message and returns its id. */
+  async create(paste: NewPaste): Promise<string> {
+    const res = await firstValueFrom(this.http.post<{ id: string }>('/api/pastes', paste));
+    return res.id;
   }
 
-  /**
-   * 🔹 ALIAS for UI compatibility
-   * Keeps CreateComponent semantics intact
-   */
-  createText(
-    ciphertext: string,
-    iv: string,
-    opts: { expiresIn: ExpiresKey; views: number; burnAfterRead: boolean }
-  ): Observable<CreateResponse> {
-    return this.createEncrypted(ciphertext, iv, opts);
-  }
-
-  // READ ENCRYPTED PAYLOAD
-  getData(id: string): Observable<PasteData> {
-    return this.http.get<PasteData>(
-      `${this.base}/${encodeURIComponent(id)}/data`
-    );
-  }
-
-  private baseHref(): string {
-    const base = document.querySelector('base')?.href || location.origin;
-    return base.endsWith('/') ? base.slice(0, -1) : base;
+  /** Fetches the encrypted message. This uses up one view. */
+  getData(id: string): Promise<PasteData> {
+    return firstValueFrom(this.http.get<PasteData>(`/api/pastes/${encodeURIComponent(id)}/data`));
   }
 }

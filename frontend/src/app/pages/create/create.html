@@ -6,8 +6,8 @@
       <p><label>Content</label></p>
       <div class="textarea-wrapper">
         <textarea [(ngModel)]="text" name="text" rows="14" required></textarea>
-        <div class="counter" [style.color]="counterColor" aria-live="polite">
-          {{ charCount | number }} / {{ maxChars | number }} <span class="muted">chars</span>
+        <div class="counter" [class.warn]="text.length >= maxChars * 0.9" [class.over]="tooLong" aria-live="polite">
+          {{ text.length | number }} / {{ maxChars | number }} <span class="muted">chars</span>
         </div>
       </div>
 
@@ -24,11 +24,6 @@
         <label>Views (1–10)<br>
           <input type="number" min="1" max="10" [(ngModel)]="views" name="views">
         </label>
-        &nbsp;&nbsp;
-        <label>
-          <input type="checkbox" [(ngModel)]="burnAfterRead" name="burnAfterRead">
-          burn-after-read
-        </label>
       </p>
 
       <p>
@@ -39,11 +34,11 @@
 
       <p class="hint">no password ⇒ the link is the key. keep it safe.</p>
 
-      <button type="submit" [disabled]="loading || !text.trim() || overCharLimit">create</button>
+      <button type="submit" [disabled]="loading || !text.trim() || tooLong">create</button>
 
-      <div class="error" *ngIf="overCharLimit">
-        Paste too long. Reduce by {{ charCount - maxChars }} characters.
-      </div>
+      @if (tooLong) {
+        <div class="error">Message too long. Remove {{ text.length - maxChars }} characters.</div>
+      }
 
       @if (error) {
         <div class="error">error: {{ error }}</div>
