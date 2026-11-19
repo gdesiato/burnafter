@@ -16,11 +16,14 @@ RUN ./mvnw -B -DskipTests package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
+# OS packages + user first: these layers stay cached across code changes.
+# (curl is used by the docker-compose healthcheck.)
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+RUN addgroup --system spring && adduser --system spring --ingroup spring
+
+# Only this layer changes when the code changes.
 COPY --from=build /src/target/*.jar app.jar
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
-
-RUN addgroup --system spring && adduser --system spring --ingroup spring
 USER spring:spring
 
 EXPOSE 8080

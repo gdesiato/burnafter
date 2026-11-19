@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 
 import java.time.Instant;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Entity
 @Table(name = "outbox_events")
@@ -84,20 +83,6 @@ public class OutboxEvent {
 
     public boolean isDead() { return this.status == Status.DEAD; }
 
-    public void incrementRetryWithBackoff(Exception ex) {
-        retryCount++;
-        this.lastError = ex.getMessage();
-
-        if (retryCount >= 5) {
-            markDead();
-            return;
-        }
-
-        long baseDelay = (long) Math.pow(2, retryCount);
-        long jitter = ThreadLocalRandom.current().nextLong(0, 3);
-        nextAttemptAt = Instant.now().plusSeconds(baseDelay + jitter);
-        status = Status.PENDING;
-    }
     public void incrementRetry() {this.retryCount++; }
 
     public UUID getId() {

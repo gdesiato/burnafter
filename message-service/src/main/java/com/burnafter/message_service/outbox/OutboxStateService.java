@@ -43,16 +43,33 @@ public class OutboxStateService {
             return true;
         }
 
-        long delay = (long) Math.pow(
+        long delay = backoffSeconds(
                 retryProperties.getBaseDelaySeconds(),
+                retryProperties.getMaxDelaySeconds(),
                 event.getRetryCount());
 
+        // Jitter spreads retries out so failed events don't all hit the
+        // recovering audit service at the same instant.
         long jitter = ThreadLocalRandom.current().nextLong(0, 3);
 
         event.setNextAttemptAt(Instant.now().plusSeconds(delay + jitter));
 
         event.setStatus(OutboxEvent.Status.PENDING);
         return false;
+    }
+
+    /**
+     * Capped exponential backoff: base^attempt seconds, never more than maxDelay.
+     * e.g. base=2, max=60 -> 2, 4, 8, 16, 32, 60, 60, ...
+     * (Previously base defaulted to 0 and nothing set it, so 0^n = 0: no backoff at all.
+     * Uncapped, attempt 19 with base 2 would have waited ~6 days.)
+     */
+    static long backoffSeconds(int base, int maxDelay, int attempt) {
+        long delay = 1;
+        for (int i = 0; i < attempt && delay < maxDelay; i++) {
+            delay *= base;
+        }
+        return Math.min(delay, maxDelay);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

@@ -9,7 +9,8 @@ public class RetryProperties {
 
     private boolean enabled;
     private int maxAttempts;
-    private int baseDelaySeconds;
+    private int baseDelaySeconds = 2;
+    private int maxDelaySeconds = 60;
 
     public boolean isEnabled() {
         return enabled;
@@ -33,5 +34,13 @@ public class RetryProperties {
 
     public void setBaseDelaySeconds(int baseDelaySeconds) {
         this.baseDelaySeconds = baseDelaySeconds;
+    }
+
+    public int getMaxDelaySeconds() {
+        return maxDelaySeconds;
+    }
+
+    public void setMaxDelaySeconds(int maxDelaySeconds) {
+        this.maxDelaySeconds = maxDelaySeconds;
     }
 }

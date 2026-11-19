@@ -15,7 +15,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate   # Flyway owns the schema; Hibernate only checks it matches
 
 management:
   endpoint:

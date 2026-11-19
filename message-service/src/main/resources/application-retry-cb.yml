@@ -1,6 +1,8 @@
 outbox:
   retry:
     enabled: true
+    base-delay-seconds: 2    # delay = 2^attempt s ...
+    max-delay-seconds: 60    # ... capped at 60 s
     max-attempts: 20
 
 resilience4j:

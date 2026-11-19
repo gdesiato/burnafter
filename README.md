@@ -189,6 +189,8 @@ Issues found and fixed while hardening this project. Each one is a small lesson 
 - **A circuit breaker without timeouts doesn't protect you from a hanging dependency.** A request in flight when the audit service died hung forever. Delivery is sequential, so that instance's whole outbox stalled, and its breaker never opened because the call never *failed*.
 - **Config that silently does nothing:** the outbox scheduler read different property keys than `application.yml` defined, capping delivery at 50 events per 5s per instance.
 - **Framework upgrades can silently turn things off.** On Spring Boot 4, `flyway-core` alone no longer runs migrations, and Resilience4j's metrics auto-configuration no longer activates. Both were only noticed because something downstream didn't happen.
+- **Backoff that wasn't:** retry delay was `base^attempt` with `base` defaulting to 0, so `0^n = 0`. Every retry fired after only the random jitter. Now 2, 4, 8 … seconds, capped at 60s. Uncapped, attempt 19 would have waited about 6 days.
+- **Two tools owning one schema:** Hibernate `ddl-auto: update` was silently adding columns the Flyway migrations lacked, and created a duplicate unique constraint. Flyway now owns the schema and Hibernate only validates it (`ddl-auto: validate`). The migrations also fixed `TIMESTAMP` to `timestamptz` for `Instant` fields, which had only been correct because the containers run in UTC.
 - **Security headers can break apps quietly:** CSP `base-uri 'none'` made the browser ignore `<base href>`, so deep links (`/p/<id>`) loaded no JavaScript.
 - **Hardening is only as strong as the weakest endpoint:** `/data` hid whether a message exists, while a metadata endpoint returned a plain `404`. It was removed.
 
@@ -197,4 +199,3 @@ Issues found and fixed while hardening this project. Each one is a small lesson 
 - **Trusting the server's JavaScript:** like all browser-based end-to-end encryption, a compromised server could serve malicious JavaScript. Subresource integrity or a signed, separately distributed client would mitigate this.
 - **A wrong password burns the message:** the server can't check a password it never sees, so the ciphertext is released (and the view consumed) before decryption is attempted.
 - **The fragment is in the browser history** of anyone who opens the full link.
-- Schema: Hibernate `ddl-auto: update` still runs alongside Flyway. The intended end state is Flyway-only with `ddl-auto: validate`.
