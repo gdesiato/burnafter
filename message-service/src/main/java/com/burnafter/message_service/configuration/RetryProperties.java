@@ -1,46 +1,16 @@
 package com.burnafter.message_service.configuration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 
-@Component
+/**
+ * outbox.retry.* - set per experiment profile (application-retry*.yml).
+ * Retry is off unless a profile enables it.
+ */
 @ConfigurationProperties(prefix = "outbox.retry")
-public class RetryProperties {
-
-    private boolean enabled;
-    private int maxAttempts;
-    private int baseDelaySeconds = 2;
-    private int maxDelaySeconds = 60;
-
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-    }
-
-    public int getMaxAttempts() {
-        return maxAttempts;
-    }
-
-    public void setMaxAttempts(int maxAttempts) {
-        this.maxAttempts = maxAttempts;
-    }
-
-    public int getBaseDelaySeconds() {
-        return baseDelaySeconds;
-    }
-
-    public void setBaseDelaySeconds(int baseDelaySeconds) {
-        this.baseDelaySeconds = baseDelaySeconds;
-    }
-
-    public int getMaxDelaySeconds() {
-        return maxDelaySeconds;
-    }
-
-    public void setMaxDelaySeconds(int maxDelaySeconds) {
-        this.maxDelaySeconds = maxDelaySeconds;
-    }
+public record RetryProperties(
+        boolean enabled,
+        int maxAttempts,
+        @DefaultValue("2") int baseDelaySeconds,
+        @DefaultValue("60") int maxDelaySeconds) {
 }

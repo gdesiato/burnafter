@@ -1,5 +1,6 @@
 package com.burnafter.message_service.service;
 
+import com.burnafter.message_service.configuration.CorrelationIdFilter;
 import com.burnafter.message_service.dtos.*;
 import com.burnafter.message_service.exception.InvalidPasteException;
 import com.burnafter.message_service.exception.InvalidPasteReason;
@@ -68,7 +69,7 @@ public class PasteService {
                 p.getId(),
                 "PASTE_CREATED",
                 p.getId().toString(),
-                MDC.get("correlationId")
+                MDC.get(CorrelationIdFilter.MDC_KEY)
         );
 
         outboxRepository.save(event);

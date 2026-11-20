@@ -38,14 +38,14 @@ public class OutboxStateService {
         event.incrementRetry();
         event.setLastError(ex.getMessage());
 
-        if (!retryProperties.isEnabled() || event.getRetryCount() >= retryProperties.getMaxAttempts()) {
+        if (!retryProperties.enabled() || event.getRetryCount() >= retryProperties.maxAttempts()) {
             event.markDead();
             return true;
         }
 
         long delay = backoffSeconds(
-                retryProperties.getBaseDelaySeconds(),
-                retryProperties.getMaxDelaySeconds(),
+                retryProperties.baseDelaySeconds(),
+                retryProperties.maxDelaySeconds(),
                 event.getRetryCount());
 
         // Jitter spreads retries out so failed events don't all hit the

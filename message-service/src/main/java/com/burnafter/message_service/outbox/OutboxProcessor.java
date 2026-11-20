@@ -1,5 +1,6 @@
 package com.burnafter.message_service.outbox;
 
+import com.burnafter.message_service.configuration.CorrelationIdFilter;
 import com.burnafter.message_service.resilience.ResilienceStrategy;
 import com.burnafter.message_service.resilience.ResilienceStrategyResolver;
 import com.burnafter.message_service.service.AuditDeliveryService;
@@ -90,7 +91,7 @@ public class OutboxProcessor {
                 ));
 
         for (OutboxEvent event : events) {
-            MDC.put("correlationId", event.getCorrelationId());
+            MDC.put(CorrelationIdFilter.MDC_KEY, event.getCorrelationId());
             log.info("Processing outbox event {}", event.getId());
 
             try {
@@ -118,7 +119,7 @@ public class OutboxProcessor {
                     auditMissingCounter.increment();
                 }
             } finally {
-                MDC.remove("correlationId");
+                MDC.remove(CorrelationIdFilter.MDC_KEY);
             }
         }
     }
