@@ -46,8 +46,15 @@
 
       @if (resultUrl) {
         <div class="result-block">
-          <input [value]="resultUrl" readonly>
-          <p><button type="button" class="copy-btn" (click)="copy()">copy</button></p>
+          <input #link [value]="resultUrl" readonly (focus)="link.select()">
+          <p>
+            <button type="button" class="copy-btn" [class.copied]="copyState === 'copied'" (click)="copy(link)">
+              {{ copyState === 'copied' ? 'copied ✓' : 'copy' }}
+            </button>
+            @if (copyState === 'failed') {
+              <span class="hint">couldn't copy automatically — link selected, press ⌘C / Ctrl+C</span>
+            }
+          </p>
         </div>
       }
     </form>

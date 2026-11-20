@@ -24,6 +24,8 @@ export class CreateComponent {
   loading = false;
   error: string | null = null;
   resultUrl: string | null = null;
+  copyState: 'idle' | 'copied' | 'failed' = 'idle';
+  private copiedTimer?: ReturnType<typeof setTimeout>;
 
   get tooLong(): boolean {
     return this.text.length > this.maxChars;
@@ -34,6 +36,7 @@ export class CreateComponent {
     this.loading = true;
     this.error = null;
     this.resultUrl = null;
+    this.copyState = 'idle';
 
     try {
       // 1. Create the key in the browser (random, or derived from the password).
@@ -49,9 +52,24 @@ export class CreateComponent {
     } finally {
       this.loading = false;
     }
+    if (this.resultUrl) this.copy();
   }
 
-  copy() {
-    if (this.resultUrl) navigator.clipboard.writeText(this.resultUrl);
+  /**
+   * navigator.clipboard exists only in secure contexts (https or localhost),
+   * and the browser may refuse the copy. On failure, select the link so the
+   * user can press Cmd/Ctrl+C instead of nothing happening.
+   */
+  async copy(input?: HTMLInputElement) {
+    if (!this.resultUrl) return;
+    clearTimeout(this.copiedTimer);
+    try {
+      await navigator.clipboard.writeText(this.resultUrl);
+      this.copyState = 'copied';
+      this.copiedTimer = setTimeout(() => (this.copyState = 'idle'), 2000);
+    } catch {
+      this.copyState = 'failed';
+      (input ?? document.querySelector<HTMLInputElement>('.result-block input'))?.select();
+    }
   }
 }
