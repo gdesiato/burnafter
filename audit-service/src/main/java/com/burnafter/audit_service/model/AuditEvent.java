@@ -4,9 +4,13 @@ import jakarta.persistence.*;
 
 import java.time.Instant;
 
+/**
+ * Read-side mapping of audit_events. Rows are written only through
+ * AuditEventRepository.insertIfAbsent (idempotent native insert), and the
+ * schema is owned by Flyway; this entity exists so Hibernate can validate it.
+ */
 @Entity
-@Table(name = "audit_events",
-        uniqueConstraints = @UniqueConstraint(columnNames = "eventId"))
+@Table(name = "audit_events")
 public class AuditEvent {
 
     @Id
@@ -32,23 +36,6 @@ public class AuditEvent {
     private Instant consumedAt;
 
     protected AuditEvent() {}
-
-    public AuditEvent(
-            String eventId,
-            String aggregateId,
-            String eventType,
-            Instant outboxCreatedAt,
-            Instant consumedAt) {
-
-        this.eventId = eventId;
-        this.aggregateId = aggregateId;
-        this.eventType = eventType;
-
-        this.createdAt = Instant.now();
-
-        this.outboxCreatedAt = outboxCreatedAt;
-        this.consumedAt = consumedAt;
-    }
 
     public String getEventId() {
         return eventId;

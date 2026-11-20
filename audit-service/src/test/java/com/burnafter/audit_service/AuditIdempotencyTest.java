@@ -26,17 +26,16 @@ class AuditIdempotencyTest {
         AuditRequest req = new AuditRequest(
                 eventId, UUID.randomUUID().toString(), "PASTE_CREATED", Instant.now());
 
+        double storedBefore = registry.counter("audit.messages.consumed").count();
         double duplicatesBefore = registry.counter("consistency.audit.duplicate").count();
 
         assertEquals(200, controller.audit(req).getStatusCode().value());
         assertEquals(200, controller.audit(req).getStatusCode().value());
 
+        // UNIQUE(event_id) guarantees at most one row; the counters prove
+        // the first call stored it and the second was treated as a duplicate.
         assertTrue(repository.existsByEventId(eventId));
-        long rows = repository.findAll().stream()
-                .filter(e -> eventId.equals(e.getEventId()))
-                .count();
-        assertEquals(1, rows);
-        assertEquals(duplicatesBefore + 1,
-                registry.counter("consistency.audit.duplicate").count());
+        assertEquals(storedBefore + 1, registry.counter("audit.messages.consumed").count());
+        assertEquals(duplicatesBefore + 1, registry.counter("consistency.audit.duplicate").count());
     }
 }

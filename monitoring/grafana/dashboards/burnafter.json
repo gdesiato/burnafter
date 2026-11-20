@@ -79,7 +79,7 @@
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         { "refId": "A", "expr": "sum(rate(messages_total[30s]))", "legendFormat": "pastes created" },
-        { "refId": "B", "expr": "sum(rate(messages_consumed_total[30s]))", "legendFormat": "audit records stored" }
+        { "refId": "B", "expr": "sum(rate(audit_messages_consumed_total[30s]))", "legendFormat": "audit records stored" }
       ],
       "fieldConfig": {
         "defaults": { "unit": "reqps", "min": 0, "custom": { "fillOpacity": 10, "lineWidth": 2 } },
@@ -119,12 +119,12 @@
       "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "refId": "A", "expr": "histogram_quantile(0.50, sum by (le) (rate(consistency_divergence_window_ms_bucket[1m])))", "legendFormat": "p50" },
-        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(consistency_divergence_window_ms_bucket[1m])))", "legendFormat": "p95" },
-        { "refId": "C", "expr": "max(consistency_divergence_window_ms_max)", "legendFormat": "max" }
+        { "refId": "A", "expr": "histogram_quantile(0.50, sum by (le) (rate(consistency_divergence_window_seconds_bucket[1m])))", "legendFormat": "p50" },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum by (le) (rate(consistency_divergence_window_seconds_bucket[1m])))", "legendFormat": "p95" },
+        { "refId": "C", "expr": "max(consistency_divergence_window_seconds_max)", "legendFormat": "max" }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "ms", "min": 0, "custom": { "fillOpacity": 10, "lineWidth": 2 } },
+        "defaults": { "unit": "s", "min": 0, "custom": { "fillOpacity": 10, "lineWidth": 2 } },
         "overrides": []
       },
       "options": { "legend": { "showLegend": true, "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
@@ -167,7 +167,7 @@
       "title": "Audit records stored",
       "gridPos": { "x": 20, "y": 16, "w": 4, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [ { "refId": "A", "expr": "sum(messages_consumed_total) or vector(0)" } ],
+      "targets": [ { "refId": "A", "expr": "sum(audit_messages_consumed_total) or vector(0)" } ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",

@@ -3,6 +3,7 @@ package com.burnafter.audit_service.controller;
 import com.burnafter.audit_service.dto.AuditRequest;
 import com.burnafter.audit_service.metrics.MetricsService;
 import com.burnafter.audit_service.repository.AuditEventRepository;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -36,9 +37,10 @@ public class AuditController {
      * so the same eventId can arrive more than once (crash after delivery,
      * stale PROCESSING reclaim). A duplicate is acknowledged with 200 so the
      * producer stops retrying, and is counted instead of stored twice.
+     * A malformed request is rejected with 400 by @Valid before touching the DB.
      */
     @PostMapping
-    public ResponseEntity<Void> audit(@RequestBody AuditRequest request) {
+    public ResponseEntity<Void> audit(@Valid @RequestBody AuditRequest request) {
         Instant consumedAt = Instant.now();
 
         int inserted = auditEventRepository.insertIfAbsent(
@@ -60,13 +62,10 @@ public class AuditController {
 
         // Only first deliveries feed the consistency-lag metric;
         // duplicates would skew it upwards.
-        long divergenceMs = Duration.between(
-                request.outboxCreatedAt(),
-                consumedAt
-        ).toMillis();
-        metricsService.recordDivergence(divergenceMs);
+        metricsService.recordDivergence(
+                Duration.between(request.outboxCreatedAt(), consumedAt));
 
-        log.info("event={} outboxCreatedAt={}",
+        log.debug("event={} outboxCreatedAt={}",
                 request.eventId(), request.outboxCreatedAt());
 
         return ResponseEntity.ok().build();
