@@ -9,15 +9,9 @@ import java.util.UUID;
 @Table(name = "pastes")
 public class Paste {
 
-    public enum Kind { TEXT }
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 50)
-    private Kind kind;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String ciphertext;
@@ -34,9 +28,8 @@ public class Paste {
     @Column(name = "views_left")
     private int viewsLeft;
 
-    @Column(name = "burn_after_read", nullable = false)
-    private boolean burnAfterRead;
-
+    // Optimistic locking: an UPDATE/DELETE only succeeds if the row still has the
+    // version we read, so two concurrent readers can't both use the last view.
     @Version
     private Long version;
 
@@ -46,39 +39,27 @@ public class Paste {
         // required by JPA
     }
 
-    public Paste(
-            Kind kind,
-            String ciphertext,
-            String iv,
-            Instant createdAt,
-            Instant expireAt,
-            int viewsLeft,
-            boolean burnAfterRead
-    ) {
-        this.kind = kind;
+    public Paste(String ciphertext, String iv, Instant createdAt, Instant expireAt, int viewsLeft) {
         this.ciphertext = ciphertext;
         this.iv = iv;
         this.createdAt = createdAt;
         this.expireAt = expireAt;
         this.viewsLeft = viewsLeft;
-        this.burnAfterRead = burnAfterRead;
     }
 
     // --- Getters ---
 
     public UUID getId() { return id; }
-    public Kind getKind() { return kind; }
     public String getCiphertext() { return ciphertext; }
     public String getIv() { return iv; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getExpireAt() { return expireAt; }
     public int getViewsLeft() { return viewsLeft; }
-    public boolean isBurnAfterRead() { return burnAfterRead; }
 
     // --- Domain Logic ---
 
     public boolean isExpired() {
-        return expireAt != null && Instant.now().isAfter(expireAt);
+        return Instant.now().isAfter(expireAt);
     }
 
     public void consumeView() {

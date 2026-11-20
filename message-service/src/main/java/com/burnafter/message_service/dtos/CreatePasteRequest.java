@@ -6,28 +6,24 @@ import jakarta.validation.constraints.*;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CreatePasteRequest {
 
-    // Zero-knowledge payload
-    // Base64(GCM ciphertext)
+    /*
+    * Base64 of the AES-GCM ciphertext. Coarse cap here (64 KiB of bytes is
+    * ~87k Base64 chars); PasteService checks the exact decoded size.
+    */
     @NotBlank
-    @Size(max = 400_000)
+    @Size(max = 100_000)
     public String ciphertext;
 
-    // Base64(12-byte IV)
+    // Base64 of the 12-byte IV
     @NotBlank
-    @Size(max = 256)
+    @Size(max = 32)
     public String iv;
 
+    // "10min", "1h", "24h" or "7d"
     @NotBlank
-    @Size(max = 20) // "10min","1h","24h","7d"
     public String expiresIn = "24h";
 
     @Min(1)
     @Max(10)
     public int views = 1;
-
-    public boolean burnAfterRead = false;
-
-    @NotBlank
-    @Size(max = 20)
-    public String kind = "TEXT";
 }

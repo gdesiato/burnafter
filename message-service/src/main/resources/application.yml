@@ -18,7 +18,6 @@ spring:
       ddl-auto: validate   # Flyway owns the schema; Hibernate only checks it matches
 
 app:
-  publicReadBase: ${PUBLIC_READ_BASE:https://gdesiato.github.io/burnafter}
   instance-id: ${INSTANCE_ID:local}
 
 management:

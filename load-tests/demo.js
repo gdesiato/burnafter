@@ -28,9 +28,7 @@ const payload = JSON.stringify({
   ciphertext: 'YWJjZGVmZw==',
   iv: 'MDEyMzQ1Njc4OWFi',
   expiresIn: '24h',
-  views: 1,
-  burnAfterRead: false,
-  kind: 'TEXT'
+  views: 1
 });
 
 export default function () {

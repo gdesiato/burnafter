@@ -19,13 +19,11 @@ class PasteRepositoryIntegrationTest {
     @Test
     void testContextLoads_andCanPersistPaste() {
         Paste paste = new Paste(
-                Paste.Kind.TEXT,
                 "ciphertext",
                 "ivvalue",
                 Instant.now(),
                 Instant.now().plusSeconds(3600),
-                3,
-                false
+                3
         );
 
         Paste saved = repository.save(paste);

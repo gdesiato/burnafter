@@ -2,6 +2,8 @@ package com.burnafter.message_service.service;
 
 import com.burnafter.message_service.dtos.CreatePasteRequest;
 import com.burnafter.message_service.dtos.CreatePasteResponse;
+import com.burnafter.message_service.exception.InvalidPasteException;
+import com.burnafter.message_service.exception.InvalidPasteReason;
 import com.burnafter.message_service.metrics.MetricsService;
 import com.burnafter.message_service.model.Paste;
 import com.burnafter.message_service.outbox.OutboxEvent;
@@ -12,8 +14,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,36 +42,110 @@ class PasteServiceTest {
             return p;
         });
 
-        service = new PasteService(
-                pasteRepository,
-                outboxRepository,
+        service = new PasteService(pasteRepository, outboxRepository,
                 new MetricsService(new SimpleMeterRegistry()));
-
-        service.maxTextBytes = 20000;
-        service.defaultTtlMinutes = 60;
-        service.maxTtlMinutes = 120;
-        ReflectionTestUtils.setField(service, "publicBaseUrl", "https://burn.test");
     }
 
+    // --- create ---
+
     @Test
-    void create_validRequest_createsPasteAndOutboxEvent() {
-        CreatePasteResponse res = service.create(validRequest(), "http://localhost");
+    void create_savesPasteAndOutboxEvent() {
+        CreatePasteResponse res = service.create(validRequest());
 
         assertNotNull(res.id());
-        assertTrue(res.readUrl().startsWith("https://burn.test/p/"));
         assertEquals(3, res.viewsLeft());
-        assertTrue(res.expireAt().isAfter(Instant.now()));
+        assertTrue(res.expireAt().isAfter(Instant.now().plus(Duration.ofMinutes(9))));
 
         verify(pasteRepository).save(any(Paste.class));
         verify(outboxRepository).save(any(OutboxEvent.class));
     }
 
-    private CreatePasteRequest validRequest() {
+    @Test
+    void create_rejectsInvalidBase64() {
+        CreatePasteRequest req = validRequest();
+        req.ciphertext = "not base64!";
+
+        assertReason(InvalidPasteReason.INVALID_BASE64, req);
+    }
+
+    @Test
+    void create_rejectsWrongIvLength() {
+        CreatePasteRequest req = validRequest();
+        req.iv = Base64.getEncoder().encodeToString(new byte[16]);
+
+        assertReason(InvalidPasteReason.INVALID_IV_LENGTH, req);
+    }
+
+    @Test
+    void create_rejectsOversizedCiphertext() {
+        CreatePasteRequest req = validRequest();
+        req.ciphertext = Base64.getEncoder().encodeToString(new byte[PasteService.MAX_CIPHERTEXT_BYTES + 1]);
+
+        assertReason(InvalidPasteReason.CIPHERTEXT_TOO_LARGE, req);
+    }
+
+    @Test
+    void create_rejectsUnknownExpiry() {
+        CreatePasteRequest req = validRequest();
+        req.expiresIn = "100y";
+
+        assertReason(InvalidPasteReason.INVALID_EXPIRY, req);
+    }
+
+    // --- data ---
+
+    @Test
+    void data_returnsCiphertextAndKeepsPasteWhileViewsRemain() {
+        Paste paste = paste(Instant.now().plusSeconds(60), 2);
+        when(pasteRepository.findById(any())).thenReturn(Optional.of(paste));
+
+        assertTrue(service.data(UUID.randomUUID()).isPresent());
+        assertEquals(1, paste.getViewsLeft());
+        verify(pasteRepository, never()).delete(any());
+    }
+
+    @Test
+    void data_deletesPasteOnLastView() {
+        Paste paste = paste(Instant.now().plusSeconds(60), 1);
+        when(pasteRepository.findById(any())).thenReturn(Optional.of(paste));
+
+        assertTrue(service.data(UUID.randomUUID()).isPresent());
+        verify(pasteRepository).delete(paste);
+    }
+
+    @Test
+    void data_expiredPasteIsDeletedAndNotReturned() {
+        // Returns empty instead of throwing: an exception would roll back the delete.
+        Paste paste = paste(Instant.now().minusSeconds(1), 1);
+        when(pasteRepository.findById(any())).thenReturn(Optional.of(paste));
+
+        assertTrue(service.data(UUID.randomUUID()).isEmpty());
+        verify(pasteRepository).delete(paste);
+    }
+
+    @Test
+    void data_unknownIdIsEmpty() {
+        when(pasteRepository.findById(any())).thenReturn(Optional.empty());
+
+        assertTrue(service.data(UUID.randomUUID()).isEmpty());
+    }
+
+    // --- helpers ---
+
+    private void assertReason(InvalidPasteReason expected, CreatePasteRequest req) {
+        InvalidPasteException ex = assertThrows(InvalidPasteException.class, () -> service.create(req));
+        assertEquals(expected, ex.getReason());
+        verifyNoInteractions(outboxRepository);
+    }
+
+    private static Paste paste(Instant expireAt, int views) {
+        return new Paste("Y2lwaGVy", "aXY=", Instant.now(), expireAt, views);
+    }
+
+    private static CreatePasteRequest validRequest() {
         CreatePasteRequest r = new CreatePasteRequest();
-        r.kind = "TEXT";
         r.views = 3;
         r.expiresIn = "10min";
-        r.burnAfterRead = false;
         r.iv = Base64.getEncoder().encodeToString(new byte[12]);
         r.ciphertext = Base64.getEncoder().encodeToString("secret".getBytes());
         return r;

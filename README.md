@@ -19,7 +19,7 @@ The server stores only ciphertext it has no key for. A database leak, a curious 
 | Message content | ❌ Only AES-GCM ciphertext |
 | Decryption key | ❌ Lives in the URL fragment; browsers never send it |
 | Password (password mode) | ❌ Used only in the browser to derive the key |
-| That *a* message exists, its size, expiry and remaining views | ✅ Needed to enforce burn-after-read and expiry |
+| That *a* message exists, its size, expiry and remaining views | ✅ Needed to enforce the view limit and expiry |
 
 ---
 
@@ -58,7 +58,7 @@ https://host/p/3f2a…c91e#Qm9vb…kE
 
 ### 2. Burn after reading (server)
 
-- Each read consumes a view. At zero views, or with burn-after-read, the row is deleted in the same transaction ([`PasteService.data`](message-service/src/main/java/com/burnafter/message_service/service/PasteService.java)).
+- Each read consumes a view. When the last view is used (1 view = burn after reading), the row is deleted in the same transaction ([`PasteService.data`](message-service/src/main/java/com/burnafter/message_service/service/PasteService.java)).
 - **Concurrent reads are safe:** `Paste` uses optimistic locking (`@Version`). If 20 clients open a one-time link at the same moment, exactly one gets the ciphertext.
 - **Side-channel hardening** on `GET /api/pastes/{id}/data` ([`PasteController`](message-service/src/main/java/com/burnafter/message_service/controller/PasteController.java)): the response is always `200` with the same shape whether the message exists, was already read, expired, or the ID is malformed. It adds random padding and a randomized minimum response time, so status codes, response sizes and timing don't reveal whether a message exists.
 - The reader must click **Open**, so link-preview bots in chat apps don't burn the message.

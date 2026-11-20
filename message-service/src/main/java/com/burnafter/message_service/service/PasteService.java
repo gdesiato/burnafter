@@ -1,166 +1,128 @@
 package com.burnafter.message_service.service;
 
 import com.burnafter.message_service.configuration.CorrelationIdFilter;
-import com.burnafter.message_service.dtos.*;
+import com.burnafter.message_service.dtos.CreatePasteRequest;
+import com.burnafter.message_service.dtos.CreatePasteResponse;
+import com.burnafter.message_service.dtos.DataResponse;
 import com.burnafter.message_service.exception.InvalidPasteException;
 import com.burnafter.message_service.exception.InvalidPasteReason;
-import com.burnafter.message_service.exception.PasteNotFoundException;
 import com.burnafter.message_service.metrics.MetricsService;
-import com.burnafter.message_service.outbox.OutboxEvent;
 import com.burnafter.message_service.model.Paste;
+import com.burnafter.message_service.outbox.OutboxEvent;
 import com.burnafter.message_service.outbox.OutboxRepository;
 import com.burnafter.message_service.repository.PasteRepository;
 import org.slf4j.MDC;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.*;
-import java.util.*;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Base64;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class PasteService {
+
+    // AES-GCM ciphertext = plaintext + 16-byte tag. The UI allows 12,000 characters
+    // (at most 4 bytes each in UTF-8, so ~48 KB): 64 KiB leaves headroom.
+    static final int MAX_CIPHERTEXT_BYTES = 64 * 1024;
+    static final int IV_BYTES = 12; // standard AES-GCM nonce size
 
     private final PasteRepository pasteRepository;
     private final OutboxRepository outboxRepository;
     private final MetricsService metricsService;
 
-    @Value("${app.maxTextBytes:20000}")     int maxTextBytes;
-    @Value("${app.defaultTtlMinutes:1440}") int defaultTtlMinutes;
-    @Value("${app.maxTtlMinutes:10080}")    int maxTtlMinutes;
-    @Value("${app.publicBaseUrl:}")         private String publicBaseUrl;
-
-    public PasteService(PasteRepository repository,
+    public PasteService(PasteRepository pasteRepository,
                         OutboxRepository outboxRepository,
                         MetricsService metricsService) {
-        this.pasteRepository = repository;
+        this.pasteRepository = pasteRepository;
         this.outboxRepository = outboxRepository;
         this.metricsService = metricsService;
     }
 
+    /**
+     * Stores the paste and its outbox event in ONE transaction: either both are
+     * saved or neither is, so every created paste is eventually audited.
+     */
     @Transactional
-    public CreatePasteResponse create(CreatePasteRequest req, String baseUrl) {
-
-        if (!"TEXT".equalsIgnoreCase(req.kind))
-            throw new InvalidPasteException(InvalidPasteReason.ONLY_TEXT_SUPPORTED);
-
-        int views = Math.max(1, Math.min(10, req.views));
-        Duration ttl = clampTtl(parseTtl(req.expiresIn));
-        Instant now = Instant.now();
-
+    public CreatePasteResponse create(CreatePasteRequest req) {
         validateCrypto(req);
 
-        Paste p = new Paste(
-                Paste.Kind.TEXT,
-                req.ciphertext,
-                req.iv,
-                now,
-                now.plus(ttl),
-                views,
-                req.burnAfterRead
-        );
+        Instant now = Instant.now();
+        Paste paste = new Paste(req.ciphertext, req.iv, now, now.plus(ttl(req.expiresIn)), req.views);
+        pasteRepository.save(paste);
 
-        pasteRepository.save(p);
+        outboxRepository.save(new OutboxEvent(
+                paste.getId(),
+                "PASTE_CREATED",
+                paste.getId().toString(),
+                MDC.get(CorrelationIdFilter.MDC_KEY)));
 
         metricsService.incrementMessagesCreated();
 
-        // Only Outbox — no REST call
-        OutboxEvent event = new OutboxEvent(
-                p.getId(),
-                "PASTE_CREATED",
-                p.getId().toString(),
-                MDC.get(CorrelationIdFilter.MDC_KEY)
-        );
-
-        outboxRepository.save(event);
-
-        return buildResponse(p, baseUrl);
+        return new CreatePasteResponse(paste.getId().toString(), paste.getExpireAt(), paste.getViewsLeft());
     }
 
+    /**
+     * Returns the encrypted data and uses up one view; the row is deleted when the
+     * last view is used. Empty if the paste doesn't exist, has expired, or is gone.
+     * Two concurrent reads of the last view: @Version makes one of them fail at commit.
+     */
     @Transactional
-    public DataResponse data(UUID id) {
+    public Optional<DataResponse> data(UUID id) {
+        Optional<Paste> found = pasteRepository.findById(id);
+        if (found.isEmpty()) {
+            return Optional.empty();
+        }
+        Paste paste = found.get();
 
-        Paste p = pasteRepository.findById(id)
-                .orElseThrow(PasteNotFoundException::new);
-
-        if (p.isExpired()) {
-            pasteRepository.delete(p);
-            throw new PasteNotFoundException();
+        if (paste.isExpired()) {
+            pasteRepository.delete(paste);
+            return Optional.empty();
         }
 
-        p.consumeView();
-
-        if (p.isBurnAfterRead() || p.isDepleted()) {
-            pasteRepository.delete(p);
+        paste.consumeView();
+        if (paste.isDepleted()) {
+            pasteRepository.delete(paste);
         }
 
-        return new DataResponse(p.getIv(), p.getCiphertext());
+        return Optional.of(new DataResponse(paste.getIv(), paste.getCiphertext()));
     }
 
     @Transactional
     public int purgeExpired() {
-
         List<Paste> expired = pasteRepository.findByExpireAtBefore(Instant.now());
         pasteRepository.deleteAll(expired);
         return expired.size();
     }
 
-    private void validateCrypto(CreatePasteRequest req) {
-
-        if (!isB64(req.ciphertext) || !isB64(req.iv))
-            throw new InvalidPasteException(InvalidPasteReason.INVALID_BASE64);
-
-        byte[] ivBytes = Base64.getDecoder().decode(req.iv);
-        if (ivBytes.length != 12)
+    // The server can't read the data, but it can check it's well-formed and not too big.
+    private static void validateCrypto(CreatePasteRequest req) {
+        if (decodeB64(req.iv).length != IV_BYTES)
             throw new InvalidPasteException(InvalidPasteReason.INVALID_IV_LENGTH);
 
-        if (Base64.getDecoder().decode(req.ciphertext).length > maxTextBytes * 4)
+        if (decodeB64(req.ciphertext).length > MAX_CIPHERTEXT_BYTES)
             throw new InvalidPasteException(InvalidPasteReason.CIPHERTEXT_TOO_LARGE);
     }
 
-    private boolean isB64(String s) {
+    private static byte[] decodeB64(String s) {
         try {
-            Base64.getDecoder().decode(s);
-            return true;
-        } catch (Exception e) {
-            return false;
+            return Base64.getDecoder().decode(s);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidPasteException(InvalidPasteReason.INVALID_BASE64);
         }
     }
 
-    private Duration clampTtl(Duration ttl) {
-        Duration maxTtl = Duration.ofMinutes(maxTtlMinutes);
-        if (ttl.compareTo(maxTtl) > 0) ttl = maxTtl;
-        if (ttl.isZero() || ttl.isNegative())
-            ttl = Duration.ofMinutes(defaultTtlMinutes);
-        return ttl;
-    }
-
-    private Duration parseTtl(String s) {
-        if (s == null || s.isBlank())
-            return Duration.ofMinutes(defaultTtlMinutes);
-
-        s = s.trim().toLowerCase(Locale.ROOT);
-        try {
-            if (s.endsWith("min")) return Duration.ofMinutes(Long.parseLong(s.replace("min","")));
-            if (s.endsWith("h"))   return Duration.ofHours(Long.parseLong(s.replace("h","")));
-            if (s.endsWith("d"))   return Duration.ofDays(Long.parseLong(s.replace("d","")));
-            return Duration.ofMinutes(Long.parseLong(s));
-        } catch (Exception e) {
-            return Duration.ofMinutes(defaultTtlMinutes);
-        }
-    }
-
-    private CreatePasteResponse buildResponse(Paste p, String baseUrl) {
-
-        String readBase = (publicBaseUrl != null && !publicBaseUrl.isBlank())
-                ? publicBaseUrl
-                : baseUrl;
-
-        return new CreatePasteResponse(
-                p.getId().toString(),
-                readBase + "/p/" + p.getId(),
-                p.getExpireAt(),
-                p.getViewsLeft()
-        );
+    // The four options offered by the UI; anything else is rejected.
+    private static Duration ttl(String expiresIn) {
+        return switch (expiresIn) {
+            case "10min" -> Duration.ofMinutes(10);
+            case "1h" -> Duration.ofHours(1);
+            case "24h" -> Duration.ofHours(24);
+            case "7d" -> Duration.ofDays(7);
+            default -> throw new InvalidPasteException(InvalidPasteReason.INVALID_EXPIRY);
+        };
     }
 }

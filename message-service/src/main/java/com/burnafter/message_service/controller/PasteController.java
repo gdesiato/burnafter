@@ -2,17 +2,15 @@ package com.burnafter.message_service.controller;
 
 import com.burnafter.message_service.dtos.*;
 import com.burnafter.message_service.service.PasteService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.net.URI;
 import java.util.UUID;
 
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.security.SecureRandom;
@@ -30,17 +28,15 @@ public class PasteController {
     }
 
     @PostMapping
-    public ResponseEntity<CreatePasteResponse> create(@Valid @RequestBody CreatePasteRequest req, HttpServletRequest http) {
-
+    public ResponseEntity<CreatePasteResponse> create(@Valid @RequestBody CreatePasteRequest req) {
         log.info("Create paste request received");
 
-        var base = externalBaseUrl(http);
-        var resp = service.create(req, base);
-
-        return ResponseEntity.created(URI.create(resp.readUrl()))
+        // No read link in the response: the link contains the key, which only
+        // the browser knows, so the browser builds it.
+        return ResponseEntity.status(HttpStatus.CREATED)
                 .cacheControl(CacheControl.noStore())
                 .header("Pragma", "no-cache")
-                .body(resp);
+                .body(service.create(req));
     }
 
     // Hardened: never leak if a paste exists or not
@@ -53,18 +49,9 @@ public class PasteController {
 
         try {
             UUID uuid = UUID.fromString(id);
-            var payload = service.data(uuid); // null -> not found / expired / already read
-
-            if (payload != null) {
-                body = new ReadPasteResponse(
-                        true,
-                        payload.iv(),
-                        payload.ciphertext(),
-                        randomPad(256, 768)
-                );
-            } else {
-                body = emptyReadResponse();
-            }
+            body = service.data(uuid)
+                    .map(d -> new ReadPasteResponse(true, d.iv(), d.ciphertext(), randomPad(256, 768)))
+                    .orElseGet(PasteController::emptyReadResponse);
 
         } catch (Exception ignored) {
             // Malformed UUID or any other error -> indistinguishable response
@@ -88,14 +75,6 @@ public class PasteController {
                 null,
                 randomPad(256, 768)
         );
-    }
-
-    private static String externalBaseUrl(HttpServletRequest req) {
-        return ServletUriComponentsBuilder.fromRequest(req)
-                .replacePath(null)
-                .replaceQuery(null)
-                .build()
-                .toUriString();
     }
 
     // Side-channel mitigations

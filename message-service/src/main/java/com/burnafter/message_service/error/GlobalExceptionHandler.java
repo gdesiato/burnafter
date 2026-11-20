@@ -2,7 +2,6 @@ package com.burnafter.message_service.error;
 
 import com.burnafter.message_service.dtos.ApiError;
 import com.burnafter.message_service.exception.InvalidPasteException;
-import com.burnafter.message_service.exception.PasteNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,20 +30,6 @@ public class GlobalExceptionHandler {
                 .body(new ApiError(
                         "INVALID_PASTE",
                         ex.getReason().name(),
-                        req.getRequestURI(),
-                        Instant.now()
-                ));
-    }
-
-    @ExceptionHandler(PasteNotFoundException.class)
-    public ResponseEntity<ApiError> handlePasteNotFound(
-            HttpServletRequest req) {
-
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(new ApiError(
-                        "PASTE_NOT_FOUND",
-                        "Paste not found",
                         req.getRequestURI(),
                         Instant.now()
                 ));
