@@ -161,7 +161,7 @@ The resilience strategy is selected with a Spring profile (`SPRING_PROFILES_ACTI
 | `baseline` | Circuit breaker effectively disabled |
 | `retry` | Retry with backoff, max 5 attempts |
 | `retry-cb` | Retry (max 20 attempts) + circuit breaker (opens at 50% failures over 10 calls) — **default** |
-| `chaos` | Injects 15% failures and 10% delays (800 ms) on the sender side |
+| `chaos` | Makes 15% of calls to the audit service fail and 10% take 800 ms longer, as an unreliable network would |
 
 Load profiles in [`load-tests/`](load-tests): `demo` (steady rate), `baseline`, `stress`, `soak` (15 min), `retry-storm`.
 

@@ -1,8 +1,7 @@
 package com.burnafter.message_service.outbox;
 
 import com.burnafter.message_service.configuration.CorrelationIdFilter;
-import com.burnafter.message_service.resilience.ResilienceStrategy;
-import com.burnafter.message_service.resilience.ResilienceStrategyResolver;
+import com.burnafter.message_service.resilience.ChaosInjector;
 import com.burnafter.message_service.service.AuditDeliveryService;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.micrometer.core.instrument.Counter;
@@ -16,7 +15,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
-import org.springframework.core.env.Environment;
 
 import java.util.List;
 
@@ -33,25 +31,23 @@ public class OutboxProcessor {
     private final Counter deadCounter;
     private final Counter cbOpenCounter;
     private final Counter auditMissingCounter;
-    private final Counter duplicateAuditCounter;
 
     private final Timer deliveryTimer;
     private final DistributionSummary batchSizeSummary;
 
     private final CircuitBreaker circuitBreaker;
 
-    private final ResilienceStrategyResolver strategyResolver;
-    private final Environment environment;
+    private final ChaosInjector chaos;
 
     @Value("${app.instance-id}")
     private String instanceId;
 
     public OutboxProcessor(OutboxClaimService claimService,
                            AuditDeliveryService deliveryService,
-                           OutboxRepository outboxRepository,
                            OutboxStateService outboxStateService,
                            MeterRegistry meterRegistry,
-                           CircuitBreakerRegistry circuitBreakerRegistry, ResilienceStrategyResolver strategyResolver, Environment environment) {
+                           CircuitBreakerRegistry circuitBreakerRegistry,
+                           ChaosInjector chaos) {
 
         this.claimService = claimService;
         this.deliveryService = deliveryService;
@@ -62,7 +58,6 @@ public class OutboxProcessor {
         this.deadCounter = meterRegistry.counter("outbox.events.dead");
         this.cbOpenCounter = meterRegistry.counter("outbox.circuitbreaker.open");
         this.auditMissingCounter = meterRegistry.counter("consistency.audit.missing");
-        this.duplicateAuditCounter = meterRegistry.counter("consistency.audit.duplicate");
 
         this.deliveryTimer = meterRegistry.timer("outbox.delivery.duration");
 
@@ -71,8 +66,7 @@ public class OutboxProcessor {
                 .register(meterRegistry);
 
         this.circuitBreaker = circuitBreakerRegistry.circuitBreaker("auditService");
-        this.strategyResolver = strategyResolver;
-        this.environment = environment;
+        this.chaos = chaos;
 
         this.circuitBreaker.getEventPublisher()
                 .onStateTransition(event ->
@@ -84,24 +78,16 @@ public class OutboxProcessor {
         List<OutboxEvent> events = claimService.claimBatch(batchSize);
         batchSizeSummary.record(events.size());
 
-        ResilienceStrategy strategy = strategyResolver.resolve(
-                environment.getProperty(
-                        "spring.profiles.active",
-                        "baseline"
-                ));
-
         for (OutboxEvent event : events) {
             MDC.put(CorrelationIdFilter.MDC_KEY, event.getCorrelationId());
             log.info("Processing outbox event {}", event.getId());
 
             try {
-                strategy.execute(() -> {circuitBreaker.executeRunnable(() ->
-                        deliveryTimer.record(() ->
-                                    deliveryService.deliver(event)
-                            )
-                    );
-                    return null;
-                });
+                circuitBreaker.executeRunnable(() ->
+                        deliveryTimer.record(() -> {
+                            chaos.beforeDelivery(); // simulated network faults; no-op unless "chaos" profile
+                            deliveryService.deliver(event);
+                        }));
                 outboxStateService.updateSuccess(event.getId());
                 processedCounter.increment();
 
