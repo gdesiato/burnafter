@@ -23,6 +23,9 @@ export class ViewComponent {
   error: string | null = null;
   content: string | null = null;
 
+  // Ciphertext fetched by the first attempt, kept so password retries don't refetch.
+  private data: { ciphertext: string; iv: string } | null = null;
+
   async open() {
     this.error = null;
 
@@ -38,24 +41,34 @@ export class ViewComponent {
 
     this.loading = true;
     try {
-      let data: PasteData;
-      try {
-        data = await this.api.getData(this.id);
-      } catch {
-        this.error = 'Unable to load the message';
-        return;
-      }
+      // Fetch only once: the fetch is what uses up a view, so a mistyped
+      // password must not cost another one. Retries decrypt the copy already
+      // in memory. This doesn't help an attacker: whoever has the ciphertext
+      // can already guess passwords offline.
+      if (!this.data) {
+        let data: PasteData;
+        try {
+          data = await this.api.getData(this.id);
+        } catch {
+          this.error = 'Unable to load the message';
+          return;
+        }
 
-      if (!data.ok || !data.ciphertext || !data.iv) {
-        this.error = 'This message has already been read or has expired';
-        return;
+        if (!data.ok || !data.ciphertext || !data.iv) {
+          this.error = 'This message has already been read or has expired';
+          return;
+        }
+        this.data = { ciphertext: data.ciphertext, iv: data.iv };
       }
 
       try {
         const key = await keyFromFragment(this.fragment, this.password);
-        this.content = await decrypt(data.ciphertext, data.iv, key);
+        this.content = await decrypt(this.data.ciphertext, this.data.iv, key);
+        this.data = null; // drop the ciphertext once it's been read
       } catch {
-        this.error = 'Could not decrypt (wrong password or damaged link)';
+        this.error = this.needsPassword
+          ? 'Wrong password, try again. The message stays open until you close this tab.'
+          : 'Could not decrypt (the link is damaged or incomplete)';
       }
     } finally {
       this.loading = false;
