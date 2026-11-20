@@ -47,7 +47,6 @@ public class AuditController {
                 request.eventId(),
                 request.aggregateId(),
                 request.eventType(),
-                consumedAt,
                 request.outboxCreatedAt(),
                 consumedAt
         );
