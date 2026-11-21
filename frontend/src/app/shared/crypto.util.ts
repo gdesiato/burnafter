@@ -37,8 +37,11 @@ export function keyFromFragment(fragment: string, password: string): Promise<Cry
 
 // AES-256-GCM: encrypts and authenticates, so tampered data fails to decrypt.
 export async function encrypt(plaintext: string, key: CryptoKey): Promise<{ ciphertext: string; iv: string }> {
-  const iv = crypto.getRandomValues(new Uint8Array(12)); // must never repeat for the same key
-  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plaintext));
+  const iv = crypto.getRandomValues(new Uint8Array(12)); // IV created, must never repeat for the same key
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv }, 
+    key, 
+    new TextEncoder().encode(plaintext)); // the code hands key, IV, and plaintext to the browser WebCrypto AES-GCM implementation
   return { ciphertext: toB64(new Uint8Array(ciphertext)), iv: toB64(iv) };
 }
 

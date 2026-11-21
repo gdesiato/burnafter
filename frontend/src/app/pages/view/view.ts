@@ -29,7 +29,7 @@ export class ViewComponent {
   async open() {
     this.error = null;
 
-    // Check everything we can BEFORE fetching: fetching uses up a view.
+    // Check BEFORE fetching: fetching uses up a view.
     if (!this.fragment) {
       this.error = 'This link is missing its key (the part after #)';
       return;
