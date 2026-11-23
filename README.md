@@ -33,20 +33,6 @@ https://host/p/3f2a…c91e#Qm9vb…kE
 3. Failed deliveries are **retried with backoff**, and a **circuit breaker** stops calling the audit-service while it's down.
 4. Delivery is at-least-once, so the audit-service stores each event once (`ON CONFLICT DO NOTHING`) and ignores duplicates.
 
-## Architecture
-
-```mermaid
-flowchart LR
-    B[Browser<br/>Angular + WebCrypto] -->|ciphertext + iv| N[Nginx]
-    N --> M1[message-service #1]
-    N --> M2[message-service #2]
-    M1 & M2 -->|paste + outbox event| PM[(Postgres<br/>messages)]
-    M1 & M2 -.->|outbox worker| A[audit-service]
-    A --> PA[(Postgres<br/>audit)]
-```
-
-Angular 20 · Java 21 / Spring Boot 4 · PostgreSQL 16 · Resilience4j · Prometheus + Grafana · k6 · Docker Compose
-
 ## Quick start
 
 ```bash
