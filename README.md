@@ -1,48 +1,12 @@
 # BurnAfter
 
-**Share a secret as a link that self-destructs after it's read, encrypted in your browser, so the server never knows what you sent.**
+**Share a secret as a link that self-destructs after it's read. It's encrypted in your browser, so the server never knows what you sent.**
 
-## Why
-
-Passwords, API keys and private notes get shared over chat and email every day, and they stay there forever: in message history, backups and inboxes. BurnAfter replaces the secret with a link:
-
-1. You write the message. **Your browser encrypts it** before anything leaves your machine.
-2. You get a link. The **decryption key is inside the link**, after the `#`.
+1. You write a message. **Your browser encrypts it** before it leaves your machine.
+2. You get a link. The **decryption key is in the link**, after the `#`.
 3. The recipient opens it once, the browser decrypts it locally, and **the server deletes it**.
 
-The server stores only ciphertext it has no key for. A database leak, a curious admin or a court order would expose only encrypted blobs, most of them already deleted.
-
-## What the server knows
-
-| | Server sees it? |
-|---|---|
-| Message content | ❌ Only AES-GCM ciphertext |
-| Decryption key | ❌ Lives in the URL fragment; browsers never send it |
-| Password (password mode) | ❌ Used only in the browser to derive the key |
-| That *a* message exists, its size, expiry and remaining views | ✅ Needed to enforce the view limit and expiry |
-
----
-
-## How it works
-
-### 1. Zero-knowledge encryption (browser)
-
-```mermaid
-sequenceDiagram
-    participant A as Sender's browser
-    participant S as Server
-    participant B as Recipient's browser
-    A->>A: generate random AES-256 key + IV<br/>encrypt message locally
-    A->>S: POST {ciphertext, iv}
-    S-->>A: id
-    A->>A: link = /p/{id}#35;{key}
-    A-->>B: share link (chat, email…)
-    Note over B,S: the #35;key part is never sent in HTTP requests
-    B->>S: GET /p/{id}/data
-    S->>S: return ciphertext, delete row
-    S-->>B: {ciphertext, iv}
-    B->>B: decrypt with key from #35;fragment
-```
+The server stores only ciphertext it has no key for. A database leak would expose only encrypted blobs, most of them already deleted.
 
 ```
 https://host/p/3f2a…c91e#Qm9vb…kE
@@ -50,152 +14,79 @@ https://host/p/3f2a…c91e#Qm9vb…kE
                          never sent to the server
 ```
 
-- The browser generates a random **AES-256-GCM** key and a 12-byte IV with the WebCrypto API, encrypts locally, and sends only `{ciphertext, iv}`. All of the cryptography is in ~70 lines: [`crypto.util.ts`](frontend/src/app/shared/crypto.util.ts).
-- **GCM is authenticated encryption:** a modified ciphertext fails to decrypt instead of producing garbage, so the server can't tamper with a message undetected.
-- The key goes in the **URL fragment** (`#…`). Browsers never send the fragment in HTTP requests, so it never reaches Nginx logs, application logs or the database.
-- **Password mode:** the key is derived with **PBKDF2-SHA256 (150k iterations)** from a password plus a random salt. The link carries only `#pwd:<salt>`, so the link alone isn't enough to read the message.
-- The server only checks structure (valid base64, 12-byte IV, size limit). It cannot check content.
+## 1. Encryption (in the browser)
 
-### 2. Burn after reading (server)
+- **AES-256-GCM via WebCrypto.** The browser generates a random key and IV, encrypts locally, and uploads only `{ciphertext, iv}`.
+- **Tamper-proof.** GCM is authenticated encryption, so if the server changes the ciphertext, decryption fails instead of returning a corrupted message.
+- **The key never reaches the server.** It sits in the URL fragment (`#…`), which browsers don't include in HTTP requests, so it never shows up in logs or the database.
+- **Password mode.** The key is derived from a password and a random salt with PBKDF2-SHA256 (150k iterations), so the link on its own can't open the message.
+- **Small and auditable.** All the crypto is about 70 lines in [`crypto.util.ts`](frontend/src/app/shared/crypto.util.ts).
 
-- Each read consumes a view. When the last view is used (1 view = burn after reading), the row is deleted in the same transaction ([`PasteService.data`](message-service/src/main/java/com/burnafter/message_service/service/PasteService.java)).
-- **Concurrent reads are safe:** `Paste` uses optimistic locking (`@Version`). If 20 clients open a one-time link at the same moment, exactly one gets the ciphertext.
-- **Side-channel hardening** on `GET /api/pastes/{id}/data` ([`PasteController`](message-service/src/main/java/com/burnafter/message_service/controller/PasteController.java)): the response is always `200` with the same shape whether the message exists, was already read, expired, or the ID is malformed. It adds random padding and a randomized minimum response time, so status codes, response sizes and timing don't reveal whether a message exists.
-- The reader must click **Open**, so link-preview bots in chat apps don't burn the message.
+## 2. Microservices (on the server)
 
-### 3. Behind the link: a reliable audit trail (transactional outbox)
+**Burn after reading.** The last read deletes the row in the same transaction. Optimistic locking means only one of 20 simultaneous readers gets the message. The read endpoint gives the same response shape and timing whether a message exists or not, so it doesn't reveal which IDs are real.
 
-The server knows nothing about the content, but it must still be able to **prove a message was created**. Every message produces an audit record in a separate audit service, containing only IDs and timestamps, never content. That record has to arrive even when the audit service is down.
+**Reliable audit trail (transactional outbox).** The message-service has to send an audit record (IDs and timestamps only) to a separate audit-service, even when the audit-service is down:
 
-Writing to two databases (pastes + audit) can't be atomic. Calling the audit service over HTTP inside the request means a crash or timeout can lose or duplicate the audit record. Instead:
-
-1. **Same transaction:** the paste and an `OutboxEvent` are committed together. The request makes no network call to the audit service ([`PasteService.create`](message-service/src/main/java/com/burnafter/message_service/service/PasteService.java)).
-2. **Competing workers:** both message-service instances poll the outbox with `SELECT … FOR UPDATE SKIP LOCKED` ([`OutboxRepository`](message-service/src/main/java/com/burnafter/message_service/outbox/OutboxRepository.java)). They share the work without taking the same rows or blocking each other.
-3. **Crash recovery:** events stuck in `PROCESSING` for more than 60s are reclaimed. Delivery is therefore **at-least-once**.
-4. **Idempotent consumer:** the audit service inserts with `ON CONFLICT (event_id) DO NOTHING` and acknowledges duplicates with `200` ([`AuditController`](audit-service/src/main/java/com/burnafter/audit_service/controller/AuditController.java)).
-5. **Resilience:** a failed delivery is retried with backoff and jitter. A **circuit breaker** (Resilience4j) stops calling a failing audit service. Calls rejected by an open breaker are requeued without using up a retry. HTTP timeouts make sure a hanging call becomes a failure the breaker can see.
-6. **Consistency lag** is measured end to end: the audit service records `storedAt − outboxCreatedAt` as a histogram.
-
----
+1. The paste and an outbox event are saved **in one transaction**, so the request never waits on the audit-service.
+2. Both message-service instances process the outbox with `SELECT … FOR UPDATE SKIP LOCKED`, so they share the work without handling the same event twice.
+3. Failed deliveries are **retried with backoff**, and a **circuit breaker** stops calling the audit-service while it's down.
+4. Delivery is at-least-once, so the audit-service stores each event once (`ON CONFLICT DO NOTHING`) and ignores duplicates.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    B[Browser<br/>Angular + WebCrypto] -->|"ciphertext + iv<br/>(key stays in #fragment)"| N[Nginx<br/>UI + load balancer]
+    B[Browser<br/>Angular + WebCrypto] -->|ciphertext + iv| N[Nginx]
     N --> M1[message-service #1]
     N --> M2[message-service #2]
-    M1 & M2 -->|"paste + outbox event<br/>(one transaction)"| PM[(Postgres<br/>messages)]
-    M1 & M2 -.->|"outbox worker<br/>retry + circuit breaker"| A[audit-service]
-    A -->|"idempotent insert"| PA[(Postgres<br/>audit)]
-    P[Prometheus] -.->|scrape| M1 & M2 & A
-    G[Grafana] --> P
+    M1 & M2 -->|paste + outbox event| PM[(Postgres<br/>messages)]
+    M1 & M2 -.->|outbox worker| A[audit-service]
+    A --> PA[(Postgres<br/>audit)]
 ```
 
-| Component | Tech |
-|---|---|
-| Frontend | Angular 20, WebCrypto (AES-GCM, PBKDF2) |
-| Services | Java 21, Spring Boot 4, Spring Data JPA, Flyway |
-| Resilience | Resilience4j circuit breaker, custom retry with backoff and jitter |
-| Data | PostgreSQL 16 (one database per service) |
-| Infra | Docker Compose, Nginx |
-| Observability | Micrometer, Prometheus, Grafana (provisioned dashboard) |
-| Load testing | k6 |
-
----
+Angular 20 · Java 21 / Spring Boot 4 · PostgreSQL 16 · Resilience4j · Prometheus + Grafana · k6 · Docker Compose
 
 ## Quick start
-
-Requirements: Docker. Optionally [k6](https://k6.io) for load tests.
 
 ```bash
 cp .env.example .env
 docker compose up --build
 ```
 
-| URL | What |
-|---|---|
-| http://localhost | BurnAfter UI |
-| http://localhost:3000 | Grafana: "BurnAfter – Outbox & Resilience" dashboard (no login needed) |
-| http://localhost:9090 | Prometheus |
+- UI: http://localhost
+- Grafana dashboard: http://localhost:3000
+- Prometheus: http://localhost:9090
 
----
-
-## Demo: surviving an audit-service outage
+## Demo: audit-service outage
 
 ```bash
-k6 run load-tests/demo.js                 # steady 30 messages/s for 3 minutes
-# ~30s in:
-docker compose stop audit-service
-# ~80s in:
-docker compose start audit-service
+k6 run load-tests/demo.js            # 30 messages/s for 3 minutes
+docker compose stop audit-service    # ~30s in
+docker compose start audit-service   # ~80s in
 ```
 
-What the dashboard shows:
-
-| Phase | Outbox backlog | Circuit breakers | API |
-|---|---|---|---|
-| Healthy | ~10 | closed | ~7 ms, 0 errors |
-| Audit down | grows ~30/s | **open** within ~10s, probing half-open | **unaffected**: still 0 errors |
-| Recovered | drains in ~30s, delivering up to ~80/s | closed | unaffected |
-
-Users never notice the outage. The audit trail is delayed but complete: 0 events lost, duplicates absorbed by the idempotent consumer.
-
-**Burn-after-read race:** run 20 simultaneous reads of the same one-time link; exactly one gets the ciphertext:
-
-```bash
-ID=$(curl -s -X POST localhost/api/pastes -H 'Content-Type: application/json' \
-  -d '{"ciphertext":"YWJjZGVmZw==","iv":"MDEyMzQ1Njc4OWFi","views":1}' \
-  | sed -E 's/.*"id":"([^"]+)".*/\1/')
-seq 20 | xargs -P 20 -I{} curl -s localhost/api/pastes/$ID/data | grep -c '"ok":true'   # -> 1
-```
-
----
-
-## Experiments
-
-The resilience strategy is selected with a Spring profile (`SPRING_PROFILES_ACTIVE` per service in [`docker-compose.yml`](docker-compose.yml)):
-
-| Profile | Behaviour |
-|---|---|
-| `baseline` | Circuit breaker effectively disabled |
-| `retry` | Retry with backoff, max 5 attempts |
-| `retry-cb` | Retry (max 20 attempts) + circuit breaker (opens at 50% failures over 10 calls) — **default** |
-| `chaos` | Makes 15% of calls to the audit service fail and 10% take 800 ms longer, as an unreliable network would |
-
-Load profiles in [`load-tests/`](load-tests): `demo` (steady rate), `baseline`, `stress`, `soak` (15 min), `retry-storm`.
-
----
+On the Grafana dashboard, the outbox backlog grows and the circuit breakers open while the audit service is down. The API keeps responding with 0 errors. Once the service comes back, the backlog drains in about 30s and no events are lost.
 
 ## Repository layout
 
 ```
-frontend/          Angular UI; all cryptography lives in src/app/shared/crypto.util.ts
-message-service/   Paste API, outbox, retry + circuit breaker, Flyway migrations
-audit-service/     Idempotent audit consumer, consistency-lag metrics
-monitoring/        Prometheus scrape config, Grafana provisioning + dashboard
+frontend/          Angular UI and browser crypto
+message-service/   Paste API, outbox, retry + circuit breaker
+audit-service/     Idempotent audit consumer
+monitoring/        Prometheus + Grafana config
 load-tests/        k6 scenarios
-docs/incidents/    Postmortems
-nginx.conf         Serves the UI, load-balances /api across both instances
 ```
 
----
+## Lessons learnt
 
-## Engineering notes
+- **At-least-once delivery needs an idempotent consumer.** Duplicate events used to be counted as lost.
+- **A circuit breaker needs timeouts.** A hanging call never fails, so the breaker never opened.
+- **Framework upgrades can silently switch features off.** On Spring Boot 4, Flyway migrations and Resilience4j metrics stopped running.
+- **Backoff that wasn't.** A base of 0 meant `0^n = 0`, so every retry fired straight away.
 
-Issues found and fixed while hardening this project. Each one is a small lesson in its own right.
+## Known limitations
 
-- **At-least-once needs an idempotent consumer.** The audit service used to return `500` on a duplicate `event_id`. The sender retried until it marked the event dead and counted it as *missing*, even though it had been stored. The consistency metric was wrong in exactly the failure scenarios being studied.
-- **A circuit breaker without timeouts doesn't protect you from a hanging dependency.** A request in flight when the audit service died hung forever. Delivery is sequential, so that instance's whole outbox stalled, and its breaker never opened because the call never *failed*.
-- **Config that silently does nothing:** the outbox scheduler read different property keys than `application.yml` defined, capping delivery at 50 events per 5s per instance.
-- **Framework upgrades can silently turn things off.** On Spring Boot 4, `flyway-core` alone no longer runs migrations, and Resilience4j's metrics auto-configuration no longer activates. Both were only noticed because something downstream didn't happen.
-- **Backoff that wasn't:** retry delay was `base^attempt` with `base` defaulting to 0, so `0^n = 0`. Every retry fired after only the random jitter. Now 2, 4, 8 … seconds, capped at 60s. Uncapped, attempt 19 would have waited about 6 days.
-- **Two tools owning one schema:** Hibernate `ddl-auto: update` was silently adding columns the Flyway migrations lacked, and created a duplicate unique constraint. Flyway now owns the schema and Hibernate only validates it (`ddl-auto: validate`). The migrations also fixed `TIMESTAMP` to `timestamptz` for `Instant` fields, which had only been correct because the containers run in UTC.
-- **Security headers can break apps quietly:** CSP `base-uri 'none'` made the browser ignore `<base href>`, so deep links (`/p/<id>`) loaded no JavaScript.
-- **Hardening is only as strong as the weakest endpoint:** `/data` hid whether a message exists, while a metadata endpoint returned a plain `404`. It was removed.
-
-### Known limitations
-
-- **Trusting the server's JavaScript:** like all browser-based end-to-end encryption, a compromised server could serve malicious JavaScript. Subresource integrity or a signed, separately distributed client would mitigate this.
-- **A wrong password burns the message:** the server can't check a password it never sees, so the ciphertext is released (and the view consumed) before decryption is attempted.
-- **The fragment is in the browser history** of anyone who opens the full link.
+- A compromised server could serve malicious JavaScript, which is a limit of all browser-based encryption.
+- A wrong password still uses up the view, because the server can't check a password it never sees.
+- The full link, key included, stays in the recipient's browser history.
