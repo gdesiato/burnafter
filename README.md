@@ -74,5 +74,5 @@ load-tests/        k6 scenarios
 ## Known limitations
 
 - A compromised server could serve malicious JavaScript, which is a limit of all browser-based encryption.
-- A wrong password still uses up the view, because the server can't check a password it never sees.
+- The first password attempt uses up the view, because the server can't check a password it never sees. Retries in the same tab are free, but if the reader closes it before entering the right password, the message is gone.
 - The full link, key included, stays in the recipient's browser history.
