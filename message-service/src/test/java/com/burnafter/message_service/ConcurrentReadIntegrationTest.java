@@ -14,6 +14,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -76,10 +77,16 @@ class ConcurrentReadIntegrationTest {
 
         assertThat(responses).allSatisfy(r -> assertThat(r.getStatusCode().value()).isEqualTo(200));
 
-        List<ReadPasteResponse> winners = responses.stream().map(ResponseEntity::getBody)
-                .filter(ReadPasteResponse::ok).toList();
-        List<ReadPasteResponse> losers = responses.stream().map(ResponseEntity::getBody)
-                .filter(b -> !b.ok()).toList();
+        List<ReadPasteResponse> winners = responses.stream()
+                .map(ResponseEntity::getBody)
+                .filter(Objects::nonNull)
+                .filter(ReadPasteResponse::ok)
+                .toList();
+
+        List<ReadPasteResponse> losers = responses.stream()
+                .map(ResponseEntity::getBody)
+                .filter(b -> !b.ok())
+                .toList();
 
         assertThat(winners).hasSize(1);
         assertThat(winners.get(0).ciphertext()).isEqualTo("ciphertext");
