@@ -61,7 +61,7 @@ public class PasteController {
                             true,
                             d.iv(),
                             d.ciphertext(),
-                            randomPad(PAD_MIN_CHARS, PAD_MAX_CHARS)))
+                            randomPad()))
                     .orElseGet(PasteController::emptyReadResponse);
 
         } catch (Exception ignored) {
@@ -70,7 +70,7 @@ public class PasteController {
         }
 
         // Add small randomized delay to reduce timing probes
-        sleepUntilAtLeast(start, MIN_RESPONSE_MS, MAX_RESPONSE_MS);
+        sleepUntilAtLeast(start);
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
@@ -84,13 +84,13 @@ public class PasteController {
                 false,
                 null,
                 null,
-                randomPad(PAD_MIN_CHARS, PAD_MAX_CHARS)
+                randomPad()
         );
     }
 
     // Side-channel mitigations
-    private static void sleepUntilAtLeast(long startNanos, int minMs, int maxMs) {
-        int targetMs = minMs + RNG.nextInt(Math.max(1, maxMs - minMs));
+    private static void sleepUntilAtLeast(long startNanos) {
+        int targetMs = MIN_RESPONSE_MS + RNG.nextInt(MAX_RESPONSE_MS - MIN_RESPONSE_MS);
         long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
         long remaining = targetMs - elapsedMs;
         if (remaining > 0) {
@@ -102,8 +102,8 @@ public class PasteController {
         }
     }
 
-    private static String randomPad(int min, int max) {
-        int len = min + RNG.nextInt(Math.max(1, max - min));
+    private static String randomPad() {
+        int len = PAD_MIN_CHARS + RNG.nextInt(PAD_MAX_CHARS - PAD_MIN_CHARS);
         final String alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
         StringBuilder sb = new StringBuilder(len);
         for (int i = 0; i < len; i++) sb.append(alphabet.charAt(RNG.nextInt(alphabet.length())));
