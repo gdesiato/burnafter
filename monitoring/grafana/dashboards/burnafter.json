@@ -164,10 +164,10 @@
     {
       "id": 8,
       "type": "stat",
-      "title": "Audit records stored (time range)",
+      "title": "Events delivered to audit",
       "gridPos": { "x": 20, "y": 16, "w": 4, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [ { "refId": "A", "expr": "round(sum(increase(audit_messages_consumed_total[$__range]))) or vector(0)" } ],
+      "targets": [ { "refId": "A", "expr": "sum(outbox_events_processed_total) or vector(0)" } ],
       "fieldConfig": {
         "defaults": {
           "unit": "short",
