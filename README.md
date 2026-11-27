@@ -24,7 +24,7 @@ https://host/p/3f2a…c91e#Qm9vb…kE
 
 ## 2. Microservices (on the server)
 
-**Burn after reading.** The last read deletes the row in the same transaction. Optimistic locking means only one of 20 simultaneous readers gets the message. The read endpoint gives the same response shape and timing whether a message exists or not, so it doesn't reveal which IDs are real.
+**Burn after reading.** The last read deletes the row in the same transaction. Optimistic locking means only one of 20 simultaneous readers gets the message. When there's nothing to return, the read endpoint doesn't say why: a link that never existed, was already read, has expired or is malformed all get the same response (HTTP 200, same fields). Every response also waits for a random 120–220 ms minimum and carries random padding, which blurs differences in timing and size without removing them. Guessing a real ID is impractical anyway: IDs are random UUIDs.
 
 **Reliable audit trail (transactional outbox).** The message-service has to send an audit record (IDs and timestamps only) to a separate audit-service, even when the audit-service is down:
 
