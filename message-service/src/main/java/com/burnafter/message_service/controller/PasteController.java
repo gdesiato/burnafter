@@ -23,6 +23,13 @@ public class PasteController {
     private final PasteService service;
     private static final SecureRandom RNG = new SecureRandom();
 
+    // Side-channel mitigations for the read endpoint. Every response uses the
+    // same values, or "found" and "not found" become distinguishable.
+    private static final int PAD_MIN_CHARS = 256;
+    private static final int PAD_MAX_CHARS = 768;
+    private static final int MIN_RESPONSE_MS = 120;
+    private static final int MAX_RESPONSE_MS = 220;
+
     public PasteController(PasteService service) {
         this.service = service;
     }
@@ -50,7 +57,11 @@ public class PasteController {
         try {
             UUID uuid = UUID.fromString(id);
             body = service.data(uuid)
-                    .map(d -> new ReadPasteResponse(true, d.iv(), d.ciphertext(), randomPad(256, 768)))
+                    .map(d -> new ReadPasteResponse(
+                            true,
+                            d.iv(),
+                            d.ciphertext(),
+                            randomPad(PAD_MIN_CHARS, PAD_MAX_CHARS)))
                     .orElseGet(PasteController::emptyReadResponse);
 
         } catch (Exception ignored) {
@@ -59,7 +70,7 @@ public class PasteController {
         }
 
         // Add small randomized delay to reduce timing probes
-        sleepUntilAtLeast(start, 120, 220);
+        sleepUntilAtLeast(start, MIN_RESPONSE_MS, MAX_RESPONSE_MS);
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
@@ -73,7 +84,7 @@ public class PasteController {
                 false,
                 null,
                 null,
-                randomPad(256, 768)
+                randomPad(PAD_MIN_CHARS, PAD_MAX_CHARS)
         );
     }
 
